@@ -1265,6 +1265,13 @@ efi_start(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         else if ( !read_file(dir_handle, cfg_file_name, &cfg, NULL) )
             blexit(L"Configuration file not found.");
 
+        if ( !shim_lock )
+        {
+            PrintStr(L"No shim found, booting xen.efi directly with OpenXT is not supported.");
+            efi_bs->Stall(10000000);
+            blexit(L"No shim found");
+        }
+
         if ( shim_lock &&
             (status = shim_lock->Measure(cfg.ptr, cfg.size, 8)) != EFI_SUCCESS )
                 PrintErrMesg(L"Configuration file could not be measured", status);
