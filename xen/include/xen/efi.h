@@ -19,6 +19,7 @@ struct efi {
     unsigned long acpi20;       /* ACPI table (ACPI 2.0) */
     unsigned long smbios;       /* SM BIOS table */
     unsigned long smbios3;      /* SMBIOS v3 table */
+    unsigned long system_table; /* System Table */
 };
 
 extern struct efi efi;
@@ -44,6 +45,7 @@ int efi_runtime_call(struct xenpf_efi_runtime_call *);
 int efi_compat_get_info(uint32_t idx, union compat_pf_efi_info *);
 int efi_compat_runtime_call(struct compat_pf_efi_runtime_call *);
 bool efi_secureboot_enabled(void);
+void efi_tboot_verify_memory(bool (*not_ram)(const void*, size_t, void*), void* data);
 
 #endif /* !__ASSEMBLY__ */
 
