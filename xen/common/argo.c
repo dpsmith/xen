@@ -2584,7 +2584,7 @@ argo_init(struct domain *d)
 {
     struct argo_domain *argo;
 
-    if ( !opt_argo || xsm_argo_enable(d) )
+    if ( !opt_argo || xsm_argo_enable_noaudit(d) )
     {
         argo_dprintk("argo disabled, domid: %u\n", d->domain_id);
         return 0;

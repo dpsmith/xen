@@ -1726,6 +1726,12 @@ static int flask_argo_enable(const struct domain *d)
                         ARGO__ENABLE, NULL);
 }
 
+static int flask_argo_enable_noaudit(const struct domain *d)
+{
+    return avc_has_perm_noaudit(domain_sid(d), SECINITSID_XEN, SECCLASS_ARGO,
+                        ARGO__ENABLE, NULL);
+}
+
 static int flask_argo_register_single_source(const struct domain *d,
                                              const struct domain *t)
 {
@@ -1882,6 +1888,7 @@ static struct xsm_operations flask_ops = {
     .domain_resource_map = flask_domain_resource_map,
 #ifdef CONFIG_ARGO
     .argo_enable = flask_argo_enable,
+    .argo_enable_noaudit = flask_argo_enable_noaudit,
     .argo_register_single_source = flask_argo_register_single_source,
     .argo_register_any_source = flask_argo_register_any_source,
     .argo_send = flask_argo_send,
