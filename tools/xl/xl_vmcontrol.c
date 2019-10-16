@@ -232,12 +232,6 @@ static void wait_for_domain_deaths(libxl_evgen_domain_death **deathws, int nr)
             libxl_evdisable_domain_death(ctx, deathws[event->for_user]);
             count++;
             break;
-        case LIBXL_EVENT_TYPE_DOMAIN_SHUTDOWN:
-            LOG("Domain %d has been shut down, reason code %d",
-                event->domid, event->u.domain_shutdown.shutdown_reason);
-            libxl_evdisable_domain_death(ctx, deathws[event->for_user]);
-            count++;
-            break;
         default:
             LOG("Unexpected event type %d", event->type);
             break;
