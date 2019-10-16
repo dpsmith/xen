@@ -888,8 +888,6 @@ static int libxl__build_device_model_args_old(libxl__gc *gc,
     if (state->saved_state) {
         flexarray_vappend(dm_args, "-loadvm", state->saved_state, NULL);
     }
-    for (i = 0; b_info->extra && b_info->extra[i] != NULL; i++)
-        flexarray_append(dm_args, b_info->extra[i]);
     flexarray_append(dm_args, "-M");
     switch (b_info->type) {
     case LIBXL_DOMAIN_TYPE_PVH:
@@ -906,6 +904,8 @@ static int libxl__build_device_model_args_old(libxl__gc *gc,
     default:
         abort();
     }
+    for (i = 0; b_info->extra && b_info->extra[i] != NULL; i++)
+        flexarray_append(dm_args, b_info->extra[i]);
     flexarray_append(dm_args, NULL);
     *args = (char **) flexarray_contents(dm_args);
     flexarray_append(dm_envs, NULL);
@@ -1698,8 +1698,6 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         flexarray_append(dm_args, "-incoming");
         flexarray_append(dm_args, GCSPRINTF("fd:%d",*dm_state_fd));
     }
-    for (i = 0; b_info->extra && b_info->extra[i] != NULL; i++)
-        flexarray_append(dm_args, b_info->extra[i]);
 
     flexarray_append(dm_args, "-machine");
     switch (b_info->type) {
@@ -1949,6 +1947,8 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
             flexarray_append(dm_args, state->dm_runas);
         }
     }
+    for (i = 0; b_info->extra && b_info->extra[i] != NULL; i++)
+        flexarray_append(dm_args, b_info->extra[i]);
     flexarray_append(dm_args, NULL);
     *args = (char **) flexarray_contents(dm_args);
     flexarray_append(dm_envs, NULL);
