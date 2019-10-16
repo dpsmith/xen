@@ -1,8 +1,8 @@
 # -*- mode: Makefile; -*-
 
-ifeq ($(filter /%,$(XEN_ROOT)),)
-$(error XEN_ROOT must be absolute)
-endif
+#ifeq ($(filter /%,$(XEN_ROOT)),)
+#$(error XEN_ROOT must be absolute)
+#endif
 
 # Convenient variables
 comma   := ,
