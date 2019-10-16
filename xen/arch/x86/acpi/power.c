@@ -379,8 +379,10 @@ static void tboot_sleep(u8 sleep_state)
     /* sizes are not same (due to packing) so copy each one */
     TB_COPY_GAS(g_tboot_shared->acpi_sinfo.pm1a_cnt_blk,
                 acpi_sinfo.pm1a_cnt_blk);
+    g_tboot_shared->acpi_sinfo.pm1a_cnt_blk.access_width = 2;
     TB_COPY_GAS(g_tboot_shared->acpi_sinfo.pm1b_cnt_blk,
                 acpi_sinfo.pm1b_cnt_blk);
+    g_tboot_shared->acpi_sinfo.pm1b_cnt_blk.access_width = 2;
     TB_COPY_GAS(g_tboot_shared->acpi_sinfo.pm1a_evt_blk,
                 acpi_sinfo.pm1a_evt_blk);
     TB_COPY_GAS(g_tboot_shared->acpi_sinfo.pm1b_evt_blk,
