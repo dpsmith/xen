@@ -32,7 +32,7 @@ OBJS  = hvmloader.o mp_tables.o util.o smbios.o
 OBJS += smp.o cacheattr.o xenbus.o vnuma.o
 OBJS += e820.o pci.o pir.o ctype.o
 OBJS += hvm_param.o
-OBJS += ovmf.o seabios.o
+OBJS += ovmf.o seabios.o optionroms.o
 ifeq ($(debug),y)
 OBJS += tests.o
 endif
@@ -73,6 +73,7 @@ acpi:
 	$(MAKE) -C $(ACPI_PATH)  ACPI_BUILD_DIR=$(CURDIR) DSDT_FILES="$(DSDT_FILES)"
 
 rombios.o: roms.inc
+seabios.o: roms.inc
 smbios.o: CFLAGS += -D__SMBIOS_DATE__="\"$(SMBIOS_REL_DATE)\""
 
 ACPI_PATH = ../../libacpi
