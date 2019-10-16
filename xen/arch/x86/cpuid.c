@@ -804,32 +804,35 @@ void guest_cpuid(const struct vcpu *v, uint32_t leaf,
              *
              * These leaks are retained for backwards compatibility, but
              * restricted to the hardware domains kernel only.
+             *
+             * OpenXT-specific: allow all PV domains to see MONITOR.
              */
+
+            /*
+             * MONITOR never leaked into PV guests, as PV guests cannot
+             * use the MONITOR/MWAIT instructions.  As such, they require
+             * the feature to not being present in emulated CPUID.
+             *
+             * Modern PVOPS Linux try to be cunning and use native CPUID
+             * to see if the hardware actually supports MONITOR, and by
+             * extension, deep C states.
+             *
+             * If the feature is seen, deep-C state information is
+             * obtained from the DSDT and handed back to Xen via the
+             * XENPF_set_processor_pminfo hypercall.
+             *
+             * This mechanism is incompatible with an HVM-based hardware
+             * domain, and also with CPUID Faulting.
+             *
+             * Luckily, Xen can be just as 'cunning', and distinguish an
+             * emulated CPUID from a faulted CPUID by whether a #UD or #GP
+             * fault is currently being serviced.  Yuck...
+             */
+            if ( cpu_has_monitor && regs->entry_vector == TRAP_gp_fault )
+                res->c |= cpufeat_mask(X86_FEATURE_MONITOR);
+
             if ( is_hardware_domain(d) && guest_kernel_mode(v, regs) )
             {
-                /*
-                 * MONITOR never leaked into PV guests, as PV guests cannot
-                 * use the MONITOR/MWAIT instructions.  As such, they require
-                 * the feature to not being present in emulated CPUID.
-                 *
-                 * Modern PVOPS Linux try to be cunning and use native CPUID
-                 * to see if the hardware actually supports MONITOR, and by
-                 * extension, deep C states.
-                 *
-                 * If the feature is seen, deep-C state information is
-                 * obtained from the DSDT and handed back to Xen via the
-                 * XENPF_set_processor_pminfo hypercall.
-                 *
-                 * This mechanism is incompatible with an HVM-based hardware
-                 * domain, and also with CPUID Faulting.
-                 *
-                 * Luckily, Xen can be just as 'cunning', and distinguish an
-                 * emulated CPUID from a faulted CPUID by whether a #UD or #GP
-                 * fault is currently being serviced.  Yuck...
-                 */
-                if ( cpu_has_monitor && regs->entry_vector == TRAP_gp_fault )
-                    res->c |= cpufeat_mask(X86_FEATURE_MONITOR);
-
                 /*
                  * While MONITOR never leaked into PV guests, EIST always used
                  * to.
