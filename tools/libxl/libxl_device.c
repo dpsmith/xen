@@ -307,6 +307,11 @@ static int disk_try_backend(disk_try_backend_args *a,
             return backend;
         }
 
+        if (!strncmp(a->disk->vdev, "atapi-pt", 9)) {
+            LOG(DEBUG, "Defaulting to backend phy for an atapi-pt device");
+            return backend;
+        }
+
         if (a->disk->script) {
             LOG(DEBUG, "Disk vdev=%s, uses script=... assuming phy backend",
                 a->disk->vdev);
@@ -408,6 +413,7 @@ int libxl__device_disk_set_backend(libxl__gc *gc, libxl_device_disk *disk) {
     } else if ((disk->backend == LIBXL_DISK_BACKEND_UNKNOWN ||
                 disk->backend == LIBXL_DISK_BACKEND_PHY) &&
                disk->backend_domid == LIBXL_TOOLSTACK_DOMID &&
+               strncmp(disk->vdev, "atapi-pt", 9) &&
                !disk->script) {
         if (stat(disk->pdev_path, &a.stab)) {
             LOGE(ERROR, "Disk vdev=%s failed to stat: %s",
@@ -542,6 +548,14 @@ int libxl__device_disk_dev_number(const char *virtpath, int *pdisk,
     char *ep;
     unsigned long ul;
     int chrused;
+    static int atapi_pt_minor = 1;
+
+    /* atapi-pt disks don't use a standard virtpath, so we need a custom
+     * way to generate a dev number. Since the math below always produces
+     * high numbers (the non-zero disk ID gets <<ed), 1 and 2 sounds good
+     * (more atapi-pt devices would blow up the ide controller) */
+    if (!strncmp(virtpath, "atapi-pt", 9))
+        return atapi_pt_minor++;
 
     chrused = -1;
     if ((sscanf(virtpath, "d%ip%i%n", &disk, &partition, &chrused)  >= 2

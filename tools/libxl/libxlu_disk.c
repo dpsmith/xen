@@ -75,7 +75,9 @@ int xlu_disk_parse(XLU_Config *cfg,
     }
     if (disk->is_cdrom) {
         disk->removable = 1;
-        disk->readwrite = 0;
+        /* OpenXT: atapi-pt "disks" can be read/write */
+        if (strncmp(disk->vdev, "atapi-pt", 9))
+            disk->readwrite = 0;
         if (!disk->pdev_path || !strcmp(disk->pdev_path, ""))
             disk->format = LIBXL_DISK_FORMAT_EMPTY;
     }

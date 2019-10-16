@@ -1835,13 +1835,21 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
             }
 
             if (disks[i].is_cdrom) {
-                drive = libxl__sprintf(gc,
-                         "if=ide,index=%d,readonly=on,media=cdrom,id=ide-%i",
-                         disk, dev_number);
+                if (!strncmp(disks[i].vdev, "atapi-pt", 9)) {
+                    need_atapi_helper = true;
+                    drive = libxl__sprintf(gc,
+                        "file=%s,if=atapi-pt,media=cdrom,format=atapi-pt-fmt%s",
+                         disks[i].pdev_path, disks[i].readwrite ? "" : ",readonly");
+                }
+                else {
+                    drive = libxl__sprintf(gc,
+                             "if=ide,index=%d,readonly=on,media=cdrom,id=ide-%i",
+                             disk, dev_number);
 
-                if (target_path)
-                    drive = libxl__sprintf(gc, "%s,file=%s,format=%s",
-                                           drive, target_path, format);
+                    if (target_path)
+                        drive = libxl__sprintf(gc, "%s,file=%s,format=%s",
+                                               drive, target_path, format);
+                }
             } else {
                 /*
                  * Explicit sd disks are passed through as is.
@@ -1985,6 +1993,34 @@ static int libxl__build_device_model_args(libxl__gc *gc,
               guest_config->b_info.device_model_version);
         return ERROR_INVAL;
     }
+}
+
+/* Duplicate guest_config->disks to dm_config->disks, omiting atapi-pt ones */
+static void libxl__dm_disks_from_hvm_guest_config(libxl__gc *gc,
+                                    libxl_domain_config * const guest_config,
+                                    libxl_domain_config *dm_config)
+{
+    libxl_ctx *ctx = libxl__gc_owner(gc);
+    int i, nr = guest_config->num_disks;
+    int dm_nr = 0;
+    int dm_i = 0;
+
+    for (i = 0; i < nr; i++) {
+        if (strncmp(guest_config->disks[i].vdev, "atapi-pt", 9))
+            dm_nr++;
+    }
+
+    GCNEW_ARRAY(dm_config->disks, dm_nr);
+
+    for (i = 0; i < nr; i++) {
+        if (strncmp(guest_config->disks[i].vdev, "atapi-pt", 9)) {
+            libxl_device_disk_init(&dm_config->disks[dm_i]);
+            libxl_device_disk_copy(ctx, &dm_config->disks[dm_i], &guest_config->disks[i]);
+            dm_i++;
+        }
+    }
+
+    dm_config->num_disks = dm_nr;
 }
 
 static void libxl__dm_vifs_from_hvm_guest_config(libxl__gc *gc,
@@ -2227,9 +2263,7 @@ void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
     dm_config->b_info.stubdom_cmdline =
         libxl__strdup(gc, guest_config->b_info.stubdom_cmdline);
 
-    dm_config->disks = guest_config->disks;
-    dm_config->num_disks = guest_config->num_disks;
-
+    libxl__dm_disks_from_hvm_guest_config(gc, guest_config, dm_config);
     libxl__dm_vifs_from_hvm_guest_config(gc, guest_config, dm_config);
 
     dm_config->c_info.run_hotplug_scripts =
