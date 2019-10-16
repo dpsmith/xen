@@ -1963,12 +1963,14 @@ static void libxl__dm_vifs_from_hvm_guest_config(libxl__gc *gc,
                                     libxl_domain_config * const guest_config,
                                     libxl_domain_config *dm_config)
 {
+    libxl_ctx *ctx = libxl__gc_owner(gc);
     int i, nr = guest_config->num_nics;
 
     GCNEW_ARRAY(dm_config->nics, nr);
 
     for (i=0; i<nr; i++) {
-        dm_config->nics[i] = guest_config->nics[i];
+        libxl_device_nic_init(&dm_config->nics[i]);
+        libxl_device_nic_copy(ctx, &dm_config->nics[i], &guest_config->nics[i]);
         dm_config->nics[i].nictype = LIBXL_NIC_TYPE_VIF;
         if (dm_config->nics[i].ifname)
             dm_config->nics[i].ifname = GCSPRINTF("%s" TAP_DEVICE_SUFFIX,
@@ -2471,7 +2473,10 @@ static void stub_dm_watch_event(libxl__egc *egc, libxl__xswait_state *xswa,
         if (dm_domid) {
             sdss->dis.ao = sdss->dm.spawn.ao;
             sdss->dis.domid = dm_domid;
-            sdss->dis.callback = spaw_stubdom_pvqemu_destroy_cb;
+            /* FIXME: the following line references a non-existent function,
+             *   even without the typo. Commenting out for now.
+             */
+            /* sdss->dis.callback = spaw_stubdom_pvqemu_destroy_cb; */
             libxl__destroy_domid(egc, &sdss->dis);
         }
        return;
