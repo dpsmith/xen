@@ -745,6 +745,27 @@ static int iommu_set_root_entry(struct iommu *iommu)
     return 0;
 }
 
+static int is_hardware_domain_mapping(struct iommu * iommu)
+{
+    unsigned long nr_dom, i;
+
+    //Determine the total number of domids that can be associated with the
+    nr_dom = cap_ndoms(iommu->cap);
+
+    //Iterate over each of the _valid_ domids associated with the MMU.
+    for( i = find_first_bit(iommu->domid_bitmap, nr_dom); i < nr_dom;
+        i = find_next_bit(iommu->domid_bitmap, nr_dom, i+1))
+    {
+        //If we have a mapping to something other than dom0, this isn't
+        //a trusted mapping-- we shouldn't apply certain quirks.
+        if ( iommu->domid_map[i] != 0 )
+          return 0;
+    }
+
+    //Otherwise, this must be a safe mapping to tweak.
+    return 1;
+}
+
 static void iommu_enable_translation(struct acpi_drhd_unit *drhd)
 {
     u32 sts;
@@ -770,6 +791,16 @@ static void iommu_enable_translation(struct acpi_drhd_unit *drhd)
             return;
         }
     }
+
+    //If this is a Nehalem IGD known to suffer VT-d issues, and we haven't force use of the iommu,
+    //disable VT-d /just for this dom0 device/. This should have no security impact on most systems.
+    if(is_igd_drhd(drhd) && is_oxt_nehalem_igd_quirk() && is_hardware_domain_mapping(iommu) && !force_iommu) {
+        dprintk(XENLOG_WARNING VTDPREFIX, "This integrated graphics device has known issues with VT-d.\n");
+        dprintk(XENLOG_WARNING VTDPREFIX, "Disabling VT-d translation for this dom0 device.\n");
+        disable_pmr(iommu);
+        return;
+    }
+
 
     /* apply platform specific errata workarounds */
     vtd_ops_preamble_quirk(iommu);

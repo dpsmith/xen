@@ -78,6 +78,29 @@ int is_igd_vt_enabled_quirk(void)
     return ( ggc & GGC_MEMORY_VT_ENABLED ? 1 : 0 );
 }
 
+/**
+ * Determine if this devices has a known-problematic Integrated Graphics
+ * Device (IGD). At least one older IGD device doesn't work with our VT-d
+ * implementation.
+ */
+int is_oxt_nehalem_igd_quirk(void)
+{
+    u16 vid, pid;
+
+    //Check the vendor ID of the IGD device.
+    //(Note that device is on bus zero, and this an integrated component of
+    //the CPU for platforms supporting VTD. As a result, this makes it
+    //reasonable to trust its vendor ID.)
+    vid = pci_conf_read16(0, 0, IGD_DEV, 0, 0);
+    if(vid != 0x8086)
+      return 0;
+
+    //And check the product ID of the device.
+    pid = pci_conf_read16(0, 0, IGD_DEV, 0, 2);
+    return (pid == 0x0042);
+}
+
+
 /*
  * QUIRK to workaround cantiga VT-d buffer flush issue.
  * The workaround is to force write buffer flush even if

@@ -91,6 +91,7 @@ int msi_msg_write_remap_rte(struct msi_desc *, struct msi_msg *);
 int intel_setup_hpet_msi(struct msi_desc *);
 
 int is_igd_vt_enabled_quirk(void);
+int is_oxt_nehalem_igd_quirk(void);
 void platform_quirks_init(void);
 void vtd_ops_preamble_quirk(struct iommu* iommu);
 void vtd_ops_postamble_quirk(struct iommu* iommu);
