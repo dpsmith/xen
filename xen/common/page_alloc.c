@@ -2211,10 +2211,15 @@ void free_xenheap_pages(void *v, unsigned int order)
 
     pg = virt_to_page(v);
 
-    for ( i = 0; i < (1u << order); i++ )
-        pg[i].count_info &= ~PGC_xen_heap;
 
-    free_heap_pages(pg, order, true);
+    /* Scrub the pages here, not in the idle loop */
+    for ( i = 0; i < (1u << order); i++ )
+    {
+        scrub_one_page(&pg[i]);
+        pg[i].count_info &= ~PGC_xen_heap;
+    }
+
+    free_heap_pages(pg, order, false);
 }
 
 #endif  /* CONFIG_SEPARATE_XENHEAP */
@@ -2395,8 +2400,13 @@ void free_domheap_pages(struct page_info *pg, unsigned int order)
             drop_dom_ref = false;
             scrub = 1;
         }
-
-        free_heap_pages(pg, order, scrub);
+        /* scrub the pages here, not in the idle loop */
+        if ( unlikely(scrub) ) {
+            for ( i = 0; i < (1 << order); i++ ) {
+                scrub_one_page(&pg[i]);
+            }
+        }
+        free_heap_pages(pg, order, false);
     }
 
     if ( drop_dom_ref )
