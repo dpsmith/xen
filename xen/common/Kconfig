@@ -221,6 +221,10 @@ choice
 		bool "SILO" if XSM_SILO
 endchoice
 
+config TXT_OP
+	bool "Compile Xen with the txt_op hypercall"
+	default n
+
 config LATE_HWDOM
 	bool "Dedicated hardware domain"
 	default n

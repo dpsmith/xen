@@ -3,6 +3,7 @@
 #include <xen/lib.h>
 #include <xen/sched.h>
 #include <xen/domain_page.h>
+#include <xen/guest_access.h>
 #include <xen/iommu.h>
 #include <xen/acpi.h>
 #include <xen/pfn.h>
@@ -13,6 +14,9 @@
 #include <asm/tboot.h>
 #include <asm/setup.h>
 #include <crypto/vmac.h>
+#include <xen/vmap.h>
+#include <xen/hypercall.h>
+#include <public/txt.h>
 
 /* tboot=<physical address of shared page> */
 static unsigned long __initdata opt_tboot_pa;
@@ -119,8 +123,12 @@ void __init tboot_probe(void)
     printk("  shutdown_entry: %#x\n", tboot_shared->shutdown_entry);
     printk("  tboot_base: %#x\n", tboot_shared->tboot_base);
     printk("  tboot_size: %#x\n", tboot_shared->tboot_size);
-    if ( tboot_shared->version >= 6 )
+    if ( tboot_shared->version >= 6 ) {
         printk("  flags: %#x\n", tboot_shared->flags);
+        printk("  tboot_evtlog_size: %#"PRIx64"\n", tboot_shared->evt_log_size);
+        printk("  tboot_evtlog_region: %#"PRIx64"\n", tboot_shared->evt_log_region);
+        printk("  tboot_evtlog_format: %#x\n", tboot_shared->evt_log_format);
+    }
 
     /* these will be needed by tboot_protect_mem_regions() and/or
        tboot_parse_dmar_table(), so get them now */
@@ -545,6 +553,73 @@ int tboot_wake_ap(int apicid, unsigned long sipi_vec)
         return 0;
     }
     return 1;
+}
+
+long do_txt_op(unsigned int cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
+{
+    long ret = 0;
+
+    switch (cmd) {
+    case TXTOP_evtlog: {
+        struct xen_txt_evtlog evtlog;
+        void *va_evtlog;
+        XEN_GUEST_HANDLE(void) buffer_hnd;
+
+        if ( !g_tboot_shared )
+            return -ENOSYS;
+
+        /* TODO Add XSM check here */
+        if ( copy_from_guest(&evtlog, arg, 1) ) {
+            printk("Failed to copy input evtlog struct (%zu bytes).\n", sizeof (evtlog));
+            return -EFAULT;
+        }
+
+        /* Does the guest need to know the size? */
+        if ( evtlog.size == 0 ) {
+            evtlog.size = g_tboot_shared->evt_log_size;
+            evtlog.format = g_tboot_shared->evt_log_format;
+
+            if ( copy_to_guest(arg, &evtlog, 1) ) {
+                printk("Failed to copy initial evtlog struct (%zu bytes).\n", sizeof (evtlog));
+                return -EFAULT;
+            }
+
+            break;
+        }
+
+        if ( evtlog.size < g_tboot_shared->evt_log_size )
+            return -EINVAL;
+
+        /* Map the event log region into Xen's virt mem */
+        va_evtlog = ioremap(g_tboot_shared->evt_log_region,
+                            g_tboot_shared->evt_log_size);
+        if ( !va_evtlog )
+            return -ENOMEM;
+
+        evtlog.size = g_tboot_shared->evt_log_size;
+        evtlog.format = g_tboot_shared->evt_log_format;
+
+        buffer_hnd = guest_handle_cast(evtlog.buffer, void);
+        if ( copy_to_guest(buffer_hnd, va_evtlog, evtlog.size) ) {
+            printk("Failed to copy evtlog buffer (%lu bytes).\n", evtlog.size);
+            ret = -EFAULT;
+        }
+
+        if ( copy_to_guest(arg, &evtlog, 1) ) {
+            printk("Failed to copy evtlog struct (%zu bytes).\n", sizeof (evtlog));
+            iounmap(va_evtlog);
+            return -EFAULT;
+        }
+
+        iounmap(va_evtlog);
+
+        break;
+    }
+    default:
+        ret = -ENOSYS;
+    }
+
+    return ret;
 }
 
 /*

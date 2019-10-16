@@ -157,6 +157,11 @@ do_dm_op(
     unsigned int nr_bufs,
     XEN_GUEST_HANDLE_PARAM(xen_dm_op_buf_t) bufs);
 
+#ifdef CONFIG_TXT_OP 
+extern long
+do_txt_op(unsigned int cmd, XEN_GUEST_HANDLE_PARAM(void) arg);
+
+#endif
 #ifdef CONFIG_COMPAT
 
 extern int

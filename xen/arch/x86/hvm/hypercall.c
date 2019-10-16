@@ -147,6 +147,9 @@ static const hypercall_table_t hvm_hypercall_table[] = {
 #endif
     HYPERCALL(xenpmu_op),
     COMPAT_CALL(dm_op),
+#ifdef CONFIG_TXT_OP
+    HYPERCALL(txt_op),
+#endif
     HYPERCALL(arch_1)
 };
 

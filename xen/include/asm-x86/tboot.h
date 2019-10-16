@@ -102,6 +102,15 @@ typedef struct __packed {
     uint32_t  flags;
     uint64_t  ap_wake_addr;      /* phys addr of kernel/VMM SIPI vector */
     uint32_t  ap_wake_trigger;   /* kernel/VMM writes APIC ID to wake AP */
+    /* TPM event log fields: */
+    uint64_t  evt_log_size;      /* size of e820 TPM event log(s) region */
+    uint64_t  evt_log_region;    /* e820 region containing TPM event log(s) */
+
+#define TB_EVTLOG_FORMAT_UNKNOWN    0x0
+#define TB_EVTLOG_FORMAT_TCG_12     0x1
+#define TB_EVTLOG_FORMAT_LEGACY_20  0x2
+#define TB_EVTLOG_FORMAT_TCG_20     0x3
+    uint8_t   evt_log_format;    /* TPM event log(s) format. */
 } tboot_shared_t;
 
 #define TB_SHUTDOWN_REBOOT      0
