@@ -1019,6 +1019,11 @@ int libxl__qmp_system_wakeup(libxl__gc *gc, int domid)
     return qmp_run_command(gc, domid, "system_wakeup", NULL, NULL, NULL);
 }
 
+int libxl__qmp_quit(libxl__gc *gc, int domid)
+{
+    return qmp_run_command(gc, domid, "quit", NULL, NULL, NULL);
+}
+
 int libxl__qmp_restore(libxl__gc *gc, int domid, const char *state_file)
 {
     libxl__json_object *args = NULL;
@@ -1045,6 +1050,11 @@ static int qmp_change(libxl__gc *gc, libxl__qmp_handler *qmp,
                               NULL, NULL, qmp->timeout);
 
     return rc;
+}
+
+int libxl__qmp_stop(libxl__gc *gc, int domid)
+{
+    return qmp_run_command(gc, domid, "stop", NULL, NULL, NULL);
 }
 
 int libxl__qmp_resume(libxl__gc *gc, int domid)

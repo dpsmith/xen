@@ -703,6 +703,13 @@ static int libxl__domain_pvcontrol(libxl__gc *gc, uint32_t domid,
     return libxl__domain_pvcontrol_write(gc, XBT_NULL, domid, cmd);
 }
 
+int libxl_hard_shutdown(libxl_ctx *ctx, uint32_t domid)
+{
+    int ret;
+    ret = xc_domain_shutdown(ctx->xch, domid, SHUTDOWN_poweroff);
+    return ret;
+}
+
 int libxl_domain_shutdown(libxl_ctx *ctx, uint32_t domid)
 {
     GC_INIT(ctx);
@@ -972,6 +979,8 @@ void libxl__domain_destroy(libxl__egc *egc, libxl__domain_destroy_state *dds)
         dds->stubdom.domid = stubdomid;
         dds->stubdom.callback = stubdom_destroy_callback;
         dds->stubdom.soft_reset = false;
+        libxl__qmp_stop(gc, dds->domid);
+        libxl__qmp_quit(gc, dds->domid);
         libxl__destroy_domid(egc, &dds->stubdom);
     } else {
         dds->stubdom_finished = 1;
@@ -1824,7 +1833,7 @@ int libxl_retrieve_domain_configuration(libxl_ctx *ctx, uint32_t domid,
                         break;
                 }
 
-                if (j < num) {         /* found in xenstore */
+                if ((j < num) || dt->type == LIBXL__DEVICE_KIND_VIF) { /* found in xenstore */
                     if (dt->merge)
                         dt->merge(ctx, p + dt->dev_elem_size * j, q);
                 } else {                /* not found in xenstore */

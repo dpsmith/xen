@@ -2358,6 +2358,24 @@ retry_transaction:
     libxl__xs_printf(gc, XBT_NULL,
                      DEVICE_MODEL_XS_PATH(gc, dm_domid, guest_domid, "/xen_extended_power_mgmt"), "2");
 
+    /* OpenXT: We wait on xenmgr writing argo-firewall-ready.
+     *         xenmgr waits on us writing image/device-model-domid
+     */
+    unsigned int timeout;
+    char *ready = NULL;
+    const char *firewall_path =
+        GCSPRINTF("%s/argo-firewall-ready",
+                  libxl__xs_get_dompath(gc, guest_domid));
+    /* Block and wait for argo firewall rules */
+    for (timeout = 0; !ready && timeout < 4; ++timeout) {
+        ready = xs_read(ctx->xsh, XBT_NULL, firewall_path, NULL);
+        if (ready) {
+            free(ready);
+            break;
+        }
+        sleep(1);
+    }
+
     libxl__multidev_begin(ao, &sdss->multidev);
     sdss->multidev.callback = spawn_stub_launch_dm;
     /* OpenXT: Again, no disk for the stubdom itself */

@@ -1229,8 +1229,9 @@ void parse_config_data(const char *config_source,
 {
     const char *buf;
     long l, vcpus = 0;
+    long vkb_flag, vfb_flag;
     XLU_Config *config;
-    XLU_ConfigList *cpus, *vbds, *nics, *pcis, *cvfbs, *cpuids, *vtpms,
+    XLU_ConfigList *cpus, *vbds, *nics, *pcis, *cpuids, *vtpms,
                    *usbctrls, *usbdevs, *p9devs, *vdispls, *pvcallsifs_devs;
     XLU_ConfigList *channels, *ioports, *irqs, *iomem, *viridian, *dtdevs,
                    *mca_caps;
@@ -1583,6 +1584,11 @@ void parse_config_data(const char *config_source,
     }
 
     xlu_cfg_get_defbool(config, "nestedhvm", &b_info->nested_hvm, 0);
+
+    if(!xlu_cfg_get_long(config, "restrictdisplaydepth", &l, 0))
+        b_info->display_depth = l;
+    if(!xlu_cfg_get_long(config, "restrictdisplayres", &l, 0))
+        b_info->display_res = l;
 
     switch(b_info->type) {
     case LIBXL_DOMAIN_TYPE_HVM:
@@ -2213,64 +2219,38 @@ skip_nic:
         fprintf(stderr, "WARNING: vif2: netchannel2 is deprecated and not supported by xl\n");
     }
 
-    d_config->num_vfbs = 0;
-    d_config->num_vkbs = 0;
-    d_config->vfbs = NULL;
-    d_config->vkbs = NULL;
+    //Support adding vkbs by themselves
+    if (!xlu_cfg_get_long (config, "vkb", &vkb_flag, 0)){
+        d_config->num_vkbs = 0;
+        d_config->vkbs = NULL;
 
-    if (!xlu_cfg_get_list (config, "vfb", &cvfbs, 0, 0)) {
-        while ((buf = xlu_cfg_get_listitem (cvfbs, d_config->num_vfbs)) != NULL) {
-            libxl_device_vfb *vfb;
-            libxl_device_vkb *vkb;
+        if (vkb_flag == 1) {
+            for(i = 0; i < 2; i++) {
+                libxl_device_vkb *vkb;
+                fprintf(stderr, "WARNING: init vkb device\n");
+                d_config->vkbs = (libxl_device_vkb *) realloc(d_config->vkbs,                          sizeof(libxl_device_vkb) * (d_config->num_vkbs + 1));
+                vkb = d_config->vkbs + d_config->num_vkbs;
+                libxl_device_vkb_init(vkb);
+                vkb->devid = d_config->num_vkbs;
+                fprintf(stderr, "WARNING: vkb device of devid %d created.\n", vkb->devid);
+                d_config->num_vkbs++;
+            }
+        }
+    }
 
-            char *buf2 = strdup(buf);
-            char *p, *p2;
+    if (!xlu_cfg_get_long (config, "vfb", &vfb_flag, 0)) {
+        d_config->num_vfbs = 0;
+        d_config->vfbs = NULL;
 
-            vfb = ARRAY_EXTEND_INIT(d_config->vfbs, d_config->num_vfbs,
-                                    libxl_device_vfb_init);
-
-            vkb = ARRAY_EXTEND_INIT(d_config->vkbs, d_config->num_vkbs,
-                                    libxl_device_vkb_init);
-
-            p = strtok(buf2, ",");
-            if (!p)
-                goto skip_vfb;
-            do {
-                while (*p == ' ')
-                    p++;
-                if ((p2 = strchr(p, '=')) == NULL)
-                    break;
-                *p2 = '\0';
-                if (!strcmp(p, "vnc")) {
-                    libxl_defbool_set(&vfb->vnc.enable, atoi(p2 + 1));
-                } else if (!strcmp(p, "vnclisten")) {
-                    free(vfb->vnc.listen);
-                    vfb->vnc.listen = strdup(p2 + 1);
-                } else if (!strcmp(p, "vncpasswd")) {
-                    free(vfb->vnc.passwd);
-                    vfb->vnc.passwd = strdup(p2 + 1);
-                } else if (!strcmp(p, "vncdisplay")) {
-                    vfb->vnc.display = atoi(p2 + 1);
-                } else if (!strcmp(p, "vncunused")) {
-                    libxl_defbool_set(&vfb->vnc.findunused, atoi(p2 + 1));
-                } else if (!strcmp(p, "keymap")) {
-                    free(vfb->keymap);
-                    vfb->keymap = strdup(p2 + 1);
-                } else if (!strcmp(p, "sdl")) {
-                    libxl_defbool_set(&vfb->sdl.enable, atoi(p2 + 1));
-                } else if (!strcmp(p, "opengl")) {
-                    libxl_defbool_set(&vfb->sdl.opengl, atoi(p2 + 1));
-                } else if (!strcmp(p, "display")) {
-                    free(vfb->sdl.display);
-                    vfb->sdl.display = strdup(p2 + 1);
-                } else if (!strcmp(p, "xauthority")) {
-                    free(vfb->sdl.xauthority);
-                    vfb->sdl.xauthority = strdup(p2 + 1);
-                }
-            } while ((p = strtok(NULL, ",")) != NULL);
-
-skip_vfb:
-            free(buf2);
+        if (vfb_flag == 1) {
+            libxl_device_vfb * vfb;
+            fprintf(stderr, "WARNING: init vfb device\n");
+            d_config->vfbs = (libxl_device_vfb *) realloc(d_config->vfbs,                              sizeof(libxl_device_vfb) * (d_config->num_vfbs + 1));
+            vfb = d_config->vfbs + d_config->num_vfbs;
+            libxl_device_vfb_init(vfb);
+            vfb->devid = d_config->num_vfbs;
+            fprintf(stderr, "WARNING: vfb device of devid %d created.\n", vfb->devid);
+            d_config->num_vfbs++;
         }
     }
 

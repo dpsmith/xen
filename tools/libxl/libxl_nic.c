@@ -129,6 +129,8 @@ static int libxl__set_xenstore_nic(libxl__gc *gc, uint32_t domid,
                                    flexarray_t *back, flexarray_t *front,
                                    flexarray_t *ro_front)
 {
+    libxl_uuid uuid;
+
     flexarray_grow(back, 2);
 
     if (nic->script)
@@ -236,6 +238,9 @@ static int libxl__set_xenstore_nic(libxl__gc *gc, uint32_t domid,
     flexarray_append(front, "mac");
     flexarray_append(front, GCSPRINTF(
                                     LIBXL_MAC_FMT, LIBXL_MAC_BYTES(nic->mac)));
+    libxl_domid_to_uuid(CTX, &uuid, nic->backend_domid);
+    flexarray_append(front, "backend-uuid");
+    flexarray_append(front, GCSPRINTF("%s", libxl__uuid2string(gc, uuid)));
 
     return 0;
 }

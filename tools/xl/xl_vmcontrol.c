@@ -109,7 +109,7 @@ int main_destroy(int argc, char **argv)
 }
 
 static void reboot_domain(uint32_t domid, libxl_evgen_domain_death **deathw,
-                          libxl_ev_user for_user, int fallback_trigger)
+                          libxl_ev_user for_user, int fallback_trigger, int hyper)
 {
     int rc;
 
@@ -177,7 +177,8 @@ static void hibernate_domain(uint32_t domid,
 static void shutdown_domain(uint32_t domid,
                             libxl_evgen_domain_death **deathw,
                             libxl_ev_user for_user,
-                            int fallback_trigger)
+                            int fallback_trigger,
+                            int hyper)
 {
     int rc;
 
@@ -185,7 +186,11 @@ static void shutdown_domain(uint32_t domid,
     libxl_update_state(ctx, domid, "shutdowning");
     rc=libxl_domain_shutdown(ctx, domid);
     if (rc == ERROR_NOPARAVIRT) {
-        if (fallback_trigger) {
+        if (hyper) {
+            fprintf(stderr, "PV control interface not available:"
+                    " asking for hard shutdown.\n");
+            rc = libxl_hard_shutdown(ctx, domid);
+        } else if (fallback_trigger) {
             fprintf(stderr, "PV control interface not available:"
                     " sending ACPI power button event.\n");
             rc = libxl_send_trigger(ctx, domid, LIBXL_TRIGGER_POWER, 0);
@@ -282,10 +287,10 @@ static int main_shutdown_or_reboot(int do_reboot, int argc, char **argv)
 {
     const char *what = do_reboot ? "reboot" : "shutdown";
     void (*fn)(uint32_t domid,
-               libxl_evgen_domain_death **, libxl_ev_user, int) =
+               libxl_evgen_domain_death **, libxl_ev_user, int, int) =
         do_reboot ? &reboot_domain : &shutdown_domain;
     int opt, i, nb_domain;
-    int wait_for_it = 0, all = 0, nrdeathws = 0;
+    int wait_for_it = 0, all = 0, nrdeathws = 0, hyper = 0;
     int fallback_trigger = 0;
     static struct option opts[] = {
         {"all", 0, 0, 'a'},
@@ -293,7 +298,7 @@ static int main_shutdown_or_reboot(int do_reboot, int argc, char **argv)
         COMMON_LONG_OPTS
     };
 
-    SWITCH_FOREACH_OPT(opt, "awF", opts, what, 0) {
+    SWITCH_FOREACH_OPT(opt, "awFc", opts, what, 0) {
     case 'a':
         all = 1;
         break;
@@ -302,6 +307,9 @@ static int main_shutdown_or_reboot(int do_reboot, int argc, char **argv)
         break;
     case 'F':
         fallback_trigger = 1;
+        break;
+    case 'c':
+        hyper = 1;
         break;
     }
 
@@ -325,7 +333,7 @@ static int main_shutdown_or_reboot(int do_reboot, int argc, char **argv)
             if (dominfo[i].domid == 0 || dominfo[i].never_stop)
                 continue;
             fn(dominfo[i].domid, deathws ? &deathws[i] : NULL, i,
-               fallback_trigger);
+               fallback_trigger, hyper);
             nrdeathws++;
         }
 
@@ -339,7 +347,7 @@ static int main_shutdown_or_reboot(int do_reboot, int argc, char **argv)
         libxl_evgen_domain_death *deathw = NULL;
         uint32_t domid = find_domain(argv[optind]);
 
-        fn(domid, wait_for_it ? &deathw : NULL, 0, fallback_trigger);
+        fn(domid, wait_for_it ? &deathw : NULL, 0, fallback_trigger, hyper);
 
         if (wait_for_it)
             wait_for_domain_deaths(&deathw, 1);
@@ -769,8 +777,10 @@ int create_domain(struct domain_create *dom_info)
     int notify_pipe[2] = { -1, -1 };
     struct save_file_header hdr;
     uint32_t domid_soft_reset = INVALID_DOMID;
+    int restoring;
 
-    int restoring = (restore_file || (migrate_fd >= 0));
+start:
+    restoring = (restore_file || (migrate_fd >= 0));
 
     libxl_domain_config_init(&d_config);
 
@@ -967,7 +977,6 @@ int create_domain(struct domain_create *dom_info)
     if (dom_info->dryrun)
         goto out;
 
-start:
     assert(domid == INVALID_DOMID);
 
     rc = acquire_lock();
@@ -1161,8 +1170,6 @@ start:
                  */
                 dom_info->console_autoconnect = 0;
 
-                /* Some settings only make sense on first boot. */
-                paused = 0;
                 if (common_domname
                     && strcmp(d_config.c_info.name, common_domname)) {
                     d_config.c_info.name = strdup(common_domname);

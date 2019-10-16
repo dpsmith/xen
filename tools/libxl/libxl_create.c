@@ -676,11 +676,30 @@ retry_transaction:
                     roperm, ARRAY_SIZE(roperm));
     libxl__xs_mknod(gc, t,
                     GCSPRINTF("%s/control", dom_path),
-                    roperm, ARRAY_SIZE(roperm));
-    if (info->type == LIBXL_DOMAIN_TYPE_HVM)
+                    rwperm, ARRAY_SIZE(rwperm));
+    libxl__xs_mknod(gc, t,
+                    GCSPRINTF("%s/error", dom_path),
+                    rwperm, ARRAY_SIZE(rwperm));
+    libxl__xs_mknod(gc, t,
+                    GCSPRINTF("%s/drivers", dom_path),
+                    rwperm, ARRAY_SIZE(rwperm));
+    libxl__xs_mknod(gc, t,
+                    GCSPRINTF("%s/attr", dom_path),
+                    rwperm, ARRAY_SIZE(rwperm));
+    libxl__xs_mknod(gc, t,
+                    GCSPRINTF("%s/data", dom_path),
+                    rwperm, ARRAY_SIZE(rwperm));
+    libxl__xs_mknod(gc, t,
+                    GCSPRINTF("%s/messages", dom_path),
+                    rwperm, ARRAY_SIZE(rwperm));
+    if (info->type == LIBXL_DOMAIN_TYPE_HVM) {
         libxl__xs_mknod(gc, t,
                         GCSPRINTF("%s/hvmloader", dom_path),
                         roperm, ARRAY_SIZE(roperm));
+        libxl__xs_printf(gc, t,
+                        GCSPRINTF("%s/hvmloader/seabios-legacy-load-roms", dom_path),
+                        "1");
+    }
 
     libxl__xs_mknod(gc, t,
                     GCSPRINTF("%s/control/shutdown", dom_path),
@@ -749,6 +768,11 @@ retry_transaction:
 
     libxl__xs_writev(gc, t, dom_path, info->xsdata);
     libxl__xs_writev(gc, t, GCSPRINTF("%s/platform", dom_path), info->platformdata);
+
+    if(d_config->b_info.display_depth)
+        xs_write(ctx->xsh, t, GCSPRINTF("%s/platform/restrictdisplaydepth", dom_path), "1", 1);
+    if(d_config->b_info.display_res)
+        xs_write(ctx->xsh, t, GCSPRINTF("%s/platform/restrictdisplayres", dom_path), "1", 1);
 
     xs_write(ctx->xsh, t, GCSPRINTF("%s/control/platform-feature-multiprocessor-suspend", dom_path), "1", 1);
     xs_write(ctx->xsh, t, GCSPRINTF("%s/control/platform-feature-xs_reset_watches", dom_path), "1", 1);
@@ -1435,16 +1459,11 @@ static void domcreate_launch_dm(libxl__egc *egc, libxl__multidev *multidev,
     {
         libxl__device_console console;
         libxl__device device;
-        libxl_device_vkb vkb;
 
         init_console_info(gc, &console, 0);
         console.backend_domid = state->console_domid;
         libxl__device_console_add(gc, domid, &console, state, &device);
         libxl__device_console_dispose(&console);
-
-        libxl_device_vkb_init(&vkb);
-        libxl__device_add(gc, domid, &libxl__vkb_devtype, &vkb);
-        libxl_device_vkb_dispose(&vkb);
 
         dcs->sdss.dm.guest_domid = domid;
         if (libxl_defbool_val(d_config->b_info.device_model_stubdomain))
@@ -1468,7 +1487,14 @@ static void domcreate_launch_dm(libxl__egc *egc, libxl__multidev *multidev,
         libxl__device_console console, vuart;
         libxl__device device;
 
+        fprintf(stderr, "WARNING: before adding vkb device.\n");
+        for (i = 0; i < d_config->num_vkbs; i++) {
+            fprintf(stderr, "WARNING: adding vkb device.\n");
+            libxl__device_add(gc, domid, &libxl__vkb_devtype, &d_config->vkbs[i]);
+        }
+
         for (i = 0; i < d_config->num_vfbs; i++) {
+            fprintf(stderr, "WARNING: adding vfb device.\n");
             libxl__device_add(gc, domid, &libxl__vfb_devtype,
                               &d_config->vfbs[i]);
         }
@@ -1485,23 +1511,17 @@ static void domcreate_launch_dm(libxl__egc *egc, libxl__multidev *multidev,
             libxl__device_console_dispose(&vuart);
         }
 
+        /* Disable QEMU for PV guests. */
+        ret = 0;
+
         init_console_info(gc, &console, 0);
         console.backend_domid = state->console_domid;
         libxl__device_console_add(gc, domid, &console, state, &device);
         libxl__device_console_dispose(&console);
 
-        ret = libxl__need_xenpv_qemu(gc, d_config);
-        if (ret < 0)
-            goto error_out;
-        if (ret) {
-            dcs->sdss.dm.guest_domid = domid;
-            libxl__spawn_local_dm(egc, &dcs->sdss.dm);
-            return;
-        } else {
-            assert(!dcs->sdss.dm.guest_domid);
-            domcreate_devmodel_started(egc, &dcs->sdss.dm, 0);
-            return;
-        }
+        assert(!dcs->sdss.dm.guest_domid);
+        domcreate_devmodel_started(egc, &dcs->sdss.dm, 0);
+        return;
     }
     default:
         ret = ERROR_INVAL;

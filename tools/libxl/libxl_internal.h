@@ -1976,6 +1976,10 @@ _hidden int libxl__qmp_pci_del(libxl__gc *gc, int domid,
                                libxl_device_pci *pcidev);
 /* Resume hvm domain */
 _hidden int libxl__qmp_system_wakeup(libxl__gc *gc, int domid);
+/* Exit QEMU */
+_hidden int libxl__qmp_quit(libxl__gc *gc, int domid);
+/* Suspend QEMU. */
+_hidden int libxl__qmp_stop(libxl__gc *gc, int domid);
 /* Resume QEMU. */
 _hidden int libxl__qmp_resume(libxl__gc *gc, int domid);
 /* Load current QEMU state from file. */

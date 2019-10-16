@@ -520,6 +520,10 @@ libxl_domain_build_info = Struct("domain_build_info",[
     ("device_model_ssid_label", string),
     ("device_model_user", string),
 
+    #display restrictions
+    ("display_depth", uint32),
+    ("display_res", uint32),
+
     # extra parameters pass directly to qemu, NULL terminated
     ("extra",            libxl_string_list),
     # extra parameters pass directly to qemu for PV guest, NULL terminated
