@@ -370,6 +370,9 @@ static void hvm_set_conf_params(xc_interface *handle, uint32_t domid,
                          libxl_defbool_val(info->u.hvm.vpt_align));
         xc_hvm_param_set(handle, domid, HVM_PARAM_NESTEDHVM,
                          libxl_defbool_val(info->nested_hvm));
+        xc_hvm_param_set(handle, domid, HVM_PARAM_XCI_CPUID_SIGNATURE,
+                         libxl_defbool_val(info->u.hvm.xci_cpuid_signature));
+
         break;
     default:
         abort();

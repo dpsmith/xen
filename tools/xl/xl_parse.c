@@ -1686,6 +1686,8 @@ void parse_config_data(const char *config_source,
             fprintf(stderr, "WARNING: Specifying \"altp2mhvm\" is deprecated. "
                     "Please use \"altp2m\" instead.\n");
 
+        xlu_cfg_get_defbool(config, "xci_cpuid_signature", &b_info->u.hvm.xci_cpuid_signature, 0);
+
         xlu_cfg_replace_string(config, "smbios_firmware",
                                &b_info->u.hvm.smbios_firmware, 0);
         xlu_cfg_replace_string(config, "acpi_firmware",
