@@ -18,6 +18,12 @@ static void evtchn_2l_set_pending(struct vcpu *v, struct evtchn *evtchn)
     struct domain *d = v->domain;
     unsigned int port = evtchn->port;
 
+    /* if domain is in S3 it will miss the notification, so check here */
+    if (d->arch.hvm.is_s3_suspended) {
+        return;
+    }
+
+
     /*
      * The following bit operations must happen in strict order.
      * NB. On x86, the atomic bit operations also act as memory barriers.
