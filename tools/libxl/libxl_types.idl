@@ -533,6 +533,11 @@ libxl_domain_build_info = Struct("domain_build_info",[
     #  parameters for all type of scheduler
     ("sched_params",     libxl_domain_sched_params),
 
+    #Memory size for stubdom
+    ("stubdom_memory",  MemKB),
+    #Kernel args for stubdom
+    ("stubdom_cmdline", string),
+
     ("ioports",          Array(libxl_ioport_range, "num_ioports")),
     ("irqs",             Array(uint32, "num_irqs")),
     ("iomem",            Array(libxl_iomem_range, "num_iomem")),

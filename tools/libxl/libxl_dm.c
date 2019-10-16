@@ -2207,6 +2207,7 @@ void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
         abort();
     }
     dm_config->b_info.max_memkb += guest_config->b_info.video_memkb;
+    dm_config->b_info.max_memkb += guest_config->b_info.stubdom_memory;
     dm_config->b_info.target_memkb = dm_config->b_info.max_memkb;
 
     dm_config->b_info.max_grant_frames = guest_config->b_info.max_grant_frames;
@@ -2221,6 +2222,8 @@ void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
     dm_config->b_info.extra = guest_config->b_info.extra;
     dm_config->b_info.extra_pv = guest_config->b_info.extra_pv;
     dm_config->b_info.extra_hvm = guest_config->b_info.extra_hvm;
+    dm_config->b_info.stubdom_cmdline =
+        libxl__strdup(gc, guest_config->b_info.stubdom_cmdline);
 
     dm_config->disks = guest_config->disks;
     dm_config->num_disks = guest_config->num_disks;
@@ -2261,6 +2264,8 @@ void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
                               libxl__xenfirmwaredir_path());
         stubdom_state->pv_ramdisk.path = libxl__abs_path(gc, "stubdomain-initramfs",
                                                          libxl__xenfirmwaredir_path());
+        stubdom_state->pv_cmdline =
+            libxl__strdup(gc, guest_config->b_info.stubdom_cmdline);
         break;
     default:
         abort();

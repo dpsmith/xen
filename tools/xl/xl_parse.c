@@ -2477,6 +2477,17 @@ skip_usbdev:
     }
 
 
+    if (!xlu_cfg_get_long (config, "stubdom_memory", &l, 0))
+        b_info->stubdom_memory = l;
+
+    //If stubdom_cmdline is provided, use it, otherwise, always set default to empty string
+    if(!xlu_cfg_get_string(config, "stubdom_cmdline", &buf, 0)) {
+        xlu_cfg_replace_string(config, "stubdom_cmdline", &b_info->stubdom_cmdline, 0);
+    } else {
+        b_info->stubdom_cmdline = (char *) malloc(sizeof(char)*1);
+        b_info->stubdom_cmdline[0] = '\0';
+    }
+
     xlu_cfg_replace_string (config, "device_model_override",
                             &b_info->device_model, 0);
     if (!xlu_cfg_get_string (config, "device_model_version", &buf, 0)) {
