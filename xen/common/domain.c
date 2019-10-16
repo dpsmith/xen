@@ -482,6 +482,9 @@ struct domain *domain_create(domid_t domid,
         memcpy(d->handle, config->handle, sizeof(d->handle));
     }
 
+    d->prev_mfn_shinfo = mfn_x(INVALID_MFN);
+    d->prev_gpfn_shinfo = mfn_x(INVALID_MFN);
+
     return d;
 
  fail:

@@ -482,6 +482,10 @@ struct domain
     unsigned int last_alloc_node;
     spinlock_t node_affinity_lock;
 
+    /* Used for unmapping the shinfo page */
+    unsigned long prev_mfn_shinfo;
+    unsigned long prev_gpfn_shinfo;
+
     /* vNUMA topology accesses are protected by rwlock. */
     rwlock_t vnuma_rwlock;
     struct vnuma_info *vnuma;
