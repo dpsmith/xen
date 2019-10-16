@@ -23,6 +23,18 @@ int libxl__blktap_enabled(libxl__gc *gc)
     return !tap_ctl_check(&msg);
 }
 
+int libxl__get_tap_minor(libxl__gc *gc, libxl_disk_format format, const char *disk)
+{
+    const char *type = NULL;
+    tap_list_t tap;
+
+    memset(&tap, 0, sizeof(tap_list_t));
+
+    type = libxl__device_disk_string_of_format(format);
+    tap_ctl_find(type, disk, &tap);
+    return tap.minor;
+}
+
 char *libxl__blktap_devpath(libxl__gc *gc,
                             const char *disk,
                             libxl_disk_format format)

@@ -1946,6 +1946,9 @@ libxl_device_usbdev_list(libxl_ctx *ctx, uint32_t domid, int *num);
 
 void libxl_device_usbdev_list_free(libxl_device_usbdev *list, int nr);
 
+int libxl_cdrom_change(libxl_ctx *ctx, uint32_t domid, char * iso, libxl_device_disk *disk, char *vdev,
+                       const libxl_asyncop_how *ao_how)
+                       LIBXL_EXTERNAL_CALLERS_ONLY;
 /* Network Interfaces */
 int libxl_device_nic_add(libxl_ctx *ctx, uint32_t domid, libxl_device_nic *nic,
                          const libxl_asyncop_how *ao_how)

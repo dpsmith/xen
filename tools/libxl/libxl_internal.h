@@ -1360,6 +1360,7 @@ _hidden int libxl__device_exists(libxl__gc *gc, xs_transaction_t t,
                                  libxl__device *device);
 _hidden int libxl__device_generic_add(libxl__gc *gc, xs_transaction_t t,
         libxl__device *device, char **bents, char **fents, char **ro_fents);
+_hidden char *libxl__device_frontend_path(libxl__gc *gc, libxl__device *device);
 _hidden char *libxl__domain_device_frontend_path(libxl__gc *gc, uint32_t domid, uint32_t devid,
                                                  libxl__device_kind device_kind);
 _hidden char *libxl__device_backend_path(libxl__gc *gc, libxl__device *device);
@@ -1924,6 +1925,8 @@ _hidden char *libxl__blktap_devpath(libxl__gc *gc,
                                     const char *disk,
                                     libxl_disk_format format);
 
+_hidden int libxl__get_tap_minor(libxl__gc *gc, libxl_disk_format format, const char *disk);
+
 /* libxl__device_destroy_tapdisk:
  *   Destroys any tapdisk process associated with the backend represented
  *   by be_path.
@@ -1989,6 +1992,7 @@ _hidden int libxl__qmp_restore(libxl__gc *gc, int domid, const char *filename);
 /* Set dirty bitmap logging status */
 _hidden int libxl__qmp_set_global_dirty_log(libxl__gc *gc, int domid, bool enable);
 _hidden int libxl__qmp_insert_cdrom(libxl__gc *gc, int domid, const libxl_device_disk *disk);
+_hidden int libxl__qmp_change_cdrom(libxl__gc *gc, int domid, const libxl_device_disk *disk);
 /* Add a virtual CPU */
 _hidden int libxl__qmp_cpu_add(libxl__gc *gc, int domid, int index);
 /* Query the bitmap of CPUs */

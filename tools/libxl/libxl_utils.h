@@ -180,6 +180,8 @@ int libxl_cpumap_to_nodemap(libxl_ctx *ctx,
                             const libxl_bitmap *cpumap,
                             libxl_bitmap *nodemap);
 
+int libxl_util_xs_read(libxl_ctx *ctx, char *path, char **out);
+
  static inline uint32_t libxl__sizekb_to_mb(uint32_t s) {
     return (s + 1023) / 1024;
 }

@@ -32,36 +32,86 @@ static int cd_insert(uint32_t domid, const char *virtdev, char *phys)
     XLU_Config *config = 0;
     struct stat b;
     int r;
+    uint32_t stubdomid = 0;
+    int i, nb, devid = -1;
+    libxl_device_disk *disks = NULL;
+    libxl_device_disk olddisk;
+    libxl_diskinfo diskinfo;
+    char *dev = NULL;
+    char *strdevid = NULL;
+    char *xspath = NULL;
+
+    memset(&diskinfo, 0, sizeof(libxl_diskinfo));
+    memset(&olddisk, 0, sizeof(libxl_device_disk));
 
     xasprintf(&buf, "vdev=%s,access=r,devtype=cdrom,target=%s",
               virtdev, phys ? phys : "");
 
     parse_disk_config(&config, buf, &disk);
 
-    /* ATM the existence of the backing file is not checked for qdisk
-     * in libxl_cdrom_insert() because RAW is used for remote
-     * protocols as well as plain files.  This will ideally be changed
-     * for 4.4, but this work-around fixes the problem of "cd-insert"
-     * returning success for non-existent files. */
-    if (disk.format != LIBXL_DISK_FORMAT_EMPTY
-        && stat(disk.pdev_path, &b)) {
-        fprintf(stderr, "Cannot stat file: %s\n",
-                disk.pdev_path);
-        r = 1;
-        goto out;
-    }
+    stubdomid = libxl_get_stubdom_id(ctx, domid);
 
-    if (libxl_cdrom_insert(ctx, domid, &disk, NULL)) {
-        r = 1;
-        goto out;
-    }
+    /* If stubdom, protocol changes slightly. Retap new iso in dom0,
+     * send qmp message to stubdom to change cdrom medium using blkfront
+     * target */
+    if (stubdomid > 0) {
+        disks = libxl_device_disk_list(ctx, stubdomid, &nb);
+        if (disks) {
+            for (i=0; i<nb; i++) {
+                if (!libxl_device_disk_getinfo(ctx, stubdomid, &disks[i], &diskinfo)) {
+                    xasprintf(&xspath, "%s/dev", diskinfo.backend);
+                    if (!xspath) {
+                        r = 0;
+                        goto out;
+                    }
+                    libxl_util_xs_read(ctx, xspath, &dev);
+                    if (!dev) {
+                        r = 0;
+                        goto out;
+                    }
+                    if (!strcmp(dev, "hdc"))
+                        devid = diskinfo.devid;
+                    libxl_diskinfo_dispose(&diskinfo);
+                }
+                libxl_device_disk_dispose(&disks[i]);
+            }
+            free(disks);
+        }
+        xasprintf(&strdevid, "%d", devid);
 
+        libxl_vdev_to_device_disk(ctx, stubdomid, strdevid, &olddisk);
+
+        libxl_cdrom_change(ctx, domid, phys, &olddisk, strdevid, NULL);
+
+    } else {
+        /* ATM the existence of the backing file is not checked for qdisk
+         * in libxl_cdrom_insert() because RAW is used for remote
+         * protocols as well as plain files.  This will ideally be changed
+         * for 4.4, but this work-around fixes the problem of "cd-insert"
+         * returning success for non-existent files. */
+        if (disk.format != LIBXL_DISK_FORMAT_EMPTY
+            && stat(disk.pdev_path, &b)) {
+            fprintf(stderr, "Cannot stat file: %s\n",
+                    disk.pdev_path);
+            r = 1;
+            goto out;
+        }
+
+        if (libxl_cdrom_insert(ctx, domid, &disk, NULL)) {
+            r = 1;
+            goto out;
+        }
+    }
     r = 0;
-
 out:
     libxl_device_disk_dispose(&disk);
     free(buf);
-
+    if (dev)
+        free(dev);
+    if (strdevid)
+        free(strdevid);
+    if (xspath)
+        free(xspath);
     return r;
 }
 

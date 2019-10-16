@@ -661,25 +661,137 @@ int libxl_device_disk_getinfo(libxl_ctx *ctx, uint32_t domid,
     return rc;
 }
 
+int libxl_cdrom_change(libxl_ctx *ctx, uint32_t domid, char *iso, libxl_device_disk *olddisk, char *vdev,
+                       const libxl_asyncop_how *ao_how)
+{
+    AO_CREATE(ctx, domid, ao_how);
+    int rc = -1;
+    libxl__device device;
+    libxl_device_disk disk_empty;
+    xs_transaction_t t = XBT_NULL;
+    char *devpath = NULL;
+    char *be_path = NULL;
+    char *fe_path = NULL;
+    char *tmp = NULL;
+    uint32_t stubdomid = libxl_get_stubdom_id(ctx, domid);
+    libxl__domain_userdata_lock *lock = NULL;
+
+    memset(&device, 0, sizeof(libxl__device));
+    memset(&disk_empty, 0, sizeof(libxl_device_disk));
+
+    struct xs_permissions roperm[2];
+    roperm[0].id = 0;
+    roperm[0].perms = XS_PERM_NONE;
+    roperm[1].id = stubdomid;
+    roperm[1].perms = XS_PERM_READ;
+
+    /* get our empty disk setup */
+    libxl_device_disk_init(&disk_empty);
+    disk_empty.format = LIBXL_DISK_FORMAT_EMPTY;
+    disk_empty.vdev = libxl__strdup(NOGC, olddisk->vdev);
+    disk_empty.pdev_path = libxl__strdup(NOGC, "");
+    disk_empty.is_cdrom = 1;
+    libxl__device_disk_setdefault(gc, stubdomid, &disk_empty, true);
+
+    lock = libxl__lock_domain_userdata(gc, stubdomid);
+    if (!lock) {
+        rc = ERROR_LOCK_FAIL;
+        goto out;
+    }
+
+    /* tap iso, if it's already tapped it will return the existing tap */
+    devpath = libxl__blktap_devpath(gc, iso, LIBXL_DISK_FORMAT_EMPTY, "/config/platform-crypto-keys");
+
+    rc = libxl__device_from_disk(gc, stubdomid, olddisk, &device);
+    if (rc){
+        fprintf(stderr, "can't create device from disk\n");
+        goto out;
+    }
+    /* insert empty cdrom */
+    libxl__qmp_insert_cdrom(gc, domid, &disk_empty);
+
+    be_path = libxl__device_backend_path(gc, &device);
+    fe_path = libxl__device_frontend_path(gc, &device);
+
+    /* disconnect iso for now */
+    do {
+        t = xs_transaction_start(ctx->xsh);
+        tmp = libxl__xs_read(gc, t, libxl__sprintf(gc, "%s/tapdisk-params", be_path));
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/online", be_path), "%s", "0");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/state", be_path), "%s", "5");
+    } while (xs_transaction_end(ctx->xsh, t, false) == false && errno == EAGAIN);
+
+    /* make sure we're disconnected */
+    rc = libxl__wait_for_backend(gc, be_path, GCSPRINTF("%d", XenbusStateClosed));
+    if (rc < 0)
+        goto out;
+
+    /* Destroy old xenbus */
+    do {
+        t = xs_transaction_start(ctx->xsh);
+        libxl__xs_rm_checked(gc, t, be_path);
+        libxl__xs_rm_checked(gc, t, fe_path);
+    } while (xs_transaction_end(ctx->xsh, t, false) == false && errno == EAGAIN);
+
+    libxl__device_destroy_tapdisk(gc, tmp, stubdomid);
+
+    /*write new device */
+    do {
+        t = xs_transaction_start(ctx->xsh);
+        xs_mkdir(ctx->xsh, t, be_path);
+        xs_set_permissions(ctx->xsh, t, be_path, roperm, ARRAY_SIZE(roperm));
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/params", be_path), "%s", devpath);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/type", be_path), "%s", "phy");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/physical-device", be_path), "fe:%x", libxl__get_tap_minor(gc, LIBXL_DISK_FORMAT_EMPTY, iso));
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/frontend", be_path), "%s", fe_path);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/device-type", be_path), "%s", "cdrom");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/online", be_path), "%s", "1");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/state", be_path), "%s", "1");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/removable", be_path), "%s", "1");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/mode", be_path), "%s", "r");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/frontend-id", be_path), "%u", stubdomid);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/dev", be_path), "%s", "hdc");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/tapdisk-params", be_path), "%s", libxl__sprintf(gc, "aio:%s", iso));
+
+        roperm[0].id = stubdomid;
+        roperm[1].id = 0;
+        xs_mkdir(ctx->xsh, t, fe_path);
+        xs_set_permissions(ctx->xsh, t, fe_path, roperm, ARRAY_SIZE(roperm));
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/state", fe_path), "%s", "1");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/backend-id", fe_path), "%s", "0");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/backend", fe_path), "%s", be_path);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/virtual-device", fe_path), "%s", vdev);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/device-type", fe_path), "%s", "cdrom");
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/backend-uuid", fe_path), "%s", "00000000-0000-0000-0000-000000000000");
+     } while (xs_transaction_end(ctx->xsh, t, false) == false && errno == EAGAIN);
+
+    rc = libxl__wait_for_backend(gc, be_path, GCSPRINTF("%d", XenbusStateConnected));
+    if (rc < 0)
+        goto out;
+
+    /* tell qemu to remount /dev/xvdc */
+    libxl__qmp_change_cdrom(gc, domid, olddisk);
+
+    libxl__ao_complete(egc, ao, 0);
+out:
+    if (lock) libxl__unlock_domain_userdata(lock);
+    if (rc) return AO_CREATE_FAIL(rc);
+    return AO_INPROGRESS;
+}
+
 int libxl_cdrom_insert(libxl_ctx *ctx, uint32_t domid, libxl_device_disk *disk,
                        const libxl_asyncop_how *ao_how)
 {
     AO_CREATE(ctx, domid, ao_how);
     int num = 0, i;
-    libxl_device_disk *disks = NULL, disk_saved, disk_empty;
-    libxl_domain_config d_config;
+    libxl_device_disk *disks = NULL, disk_empty;
     int rc, dm_ver;
     libxl__device device;
     const char *be_path, *libxl_path;
-    char * tmp;
     libxl__domain_userdata_lock *lock = NULL;
     xs_transaction_t t = XBT_NULL;
-    flexarray_t *insert = NULL, *empty = NULL;
 
-    libxl_domain_config_init(&d_config);
     libxl_device_disk_init(&disk_empty);
-    libxl_device_disk_init(&disk_saved);
-    libxl_device_disk_copy(ctx, &disk_saved, disk);
 
     disk_empty.format = LIBXL_DISK_FORMAT_EMPTY;
     disk_empty.vdev = libxl__strdup(NOGC, disk->vdev);
@@ -720,42 +832,17 @@ int libxl_cdrom_insert(libxl_ctx *ctx, uint32_t domid, libxl_device_disk *disk,
             break;
         }
     }
+
     if (i == num) {
         LOGD(ERROR, domid, "Virtual device not found");
         rc = ERROR_FAIL;
         goto out;
     }
 
-    rc = libxl__device_disk_setdefault(gc, domid, disk, false);
-    if (rc) goto out;
-
     if (!disk->pdev_path) {
         disk->pdev_path = libxl__strdup(NOGC, "");
         disk->format = LIBXL_DISK_FORMAT_EMPTY;
     }
-
-    rc = libxl__device_from_disk(gc, domid, disk, &device);
-    if (rc) goto out;
-
-    be_path = libxl__device_backend_path(gc, &device);
-    libxl_path = libxl__device_libxl_path(gc, &device);
-
-    insert = flexarray_make(gc, 4, 1);
-
-    flexarray_append_pair(insert, "type",
-                          libxl__device_disk_string_of_backend(disk->backend));
-    if (disk->format != LIBXL_DISK_FORMAT_EMPTY)
-        flexarray_append_pair(insert, "params",
-                        GCSPRINTF("%s:%s",
-                            libxl__device_disk_string_of_format(disk->format),
-                            disk->pdev_path));
-    else
-        flexarray_append_pair(insert, "params", "");
-
-    empty = flexarray_make(gc, 4, 1);
-    flexarray_append_pair(empty, "type",
-                          libxl__device_disk_string_of_backend(disk->backend));
-    flexarray_append_pair(empty, "params", "");
 
     /* Note: CTX lock is already held at this point so lock hierarchy
      * is maintained.
@@ -774,72 +861,29 @@ int libxl_cdrom_insert(libxl_ctx *ctx, uint32_t domid, libxl_device_disk *disk,
         if (rc) goto out;
     }
 
-    for (;;) {
-        rc = libxl__xs_transaction_start(gc, &t);
-        if (rc) goto out;
-        /* Sanity check: make sure the device exists before writing here */
-        tmp = libxl__xs_read(gc, t, GCSPRINTF("%s/frontend", libxl_path));
-        if (!tmp)
-        {
-            LOGD(ERROR, domid, "Internal error: %s does not exist",
-                 GCSPRINTF("%s/frontend", libxl_path));
-            rc = ERROR_FAIL;
-            goto out;
-        }
-
-        char **kvs = libxl__xs_kvs_of_flexarray(gc, empty);
-
-        rc = libxl__xs_writev(gc, t, be_path, kvs);
-        if (rc) goto out;
-
-        rc = libxl__xs_writev(gc, t, libxl_path, kvs);
-        if (rc) goto out;
-
-        rc = libxl__xs_transaction_commit(gc, &t);
-        if (!rc) break;
-        if (rc < 0) goto out;
+    rc = libxl__device_from_disk(gc, domid, disk, &device);
+    if (rc){
+        fprintf(stderr, "can't create device from disk\n");
+        goto out;
     }
 
-    rc = libxl__get_domain_configuration(gc, domid, &d_config);
-    if (rc) goto out;
+    be_path = libxl__device_backend_path(gc, &device);
+    libxl_path = libxl__device_libxl_path(gc, &device);
 
-    device_add_domain_config(gc, &d_config, &libxl__disk_devtype, &disk_saved);
+    /* Update the xenstore with new disk params */
+    do {
+        t = xs_transaction_start(ctx->xsh);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/params", be_path), "%s", disk->pdev_path);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/physical-device-path", be_path), "%s", disk->pdev_path);
+        libxl__xs_printf(gc, t, libxl__sprintf(gc, "%s/params", libxl_path), "%s", disk->pdev_path);
+     } while (xs_transaction_end(ctx->xsh, t, false) == false && errno == EAGAIN);
 
-    rc = libxl__dm_check_start(gc, &d_config, domid);
-    if (rc) goto out;
-
+    /* We need to change the disk now. This is implemented
+     * by inserting a non-empty disk.
+     */
     if (dm_ver == LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN) {
         rc = libxl__qmp_insert_cdrom(gc, domid, disk);
         if (rc) goto out;
-    }
-
-    for (;;) {
-        rc = libxl__xs_transaction_start(gc, &t);
-        if (rc) goto out;
-        /* Sanity check: make sure the device exists before writing here */
-        tmp = libxl__xs_read(gc, t, GCSPRINTF("%s/frontend", libxl_path));
-        if (!tmp)
-        {
-            LOGD(ERROR, domid, "Internal error: %s does not exist",
-                 GCSPRINTF("%s/frontend", libxl_path));
-            rc = ERROR_FAIL;
-            goto out;
-        }
-
-        rc = libxl__set_domain_configuration(gc, domid, &d_config);
-        if (rc) goto out;
-
-        char **kvs = libxl__xs_kvs_of_flexarray(gc, insert);
-
-        rc = libxl__xs_writev(gc, t, be_path, kvs);
-        if (rc) goto out;
-
-        rc = libxl__xs_writev(gc, t, libxl_path, kvs);
-        if (rc) goto out;
-
-        rc = libxl__xs_transaction_commit(gc, &t);
-        if (!rc) break;
-        if (rc < 0) goto out;
     }
 
     /* success, no actual async */
@@ -848,11 +892,8 @@ int libxl_cdrom_insert(libxl_ctx *ctx, uint32_t domid, libxl_device_disk *disk,
     rc = 0;
 
 out:
-    libxl__xs_transaction_abort(gc, &t);
     libxl__device_list_free(&libxl__disk_devtype, disks, num);
     libxl_device_disk_dispose(&disk_empty);
-    libxl_device_disk_dispose(&disk_saved);
-    libxl_domain_config_dispose(&d_config);
 
     if (lock) libxl__unlock_domain_userdata(lock);
 

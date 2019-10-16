@@ -1072,6 +1072,17 @@ int libxl__qmp_set_global_dirty_log(libxl__gc *gc, int domid, bool enable)
                            NULL, NULL);
 }
 
+int libxl__qmp_change_cdrom(libxl__gc *gc, int domid,
+							const libxl_device_disk *disk)
+{
+    libxl__json_object *args = NULL;
+    int dev_number = libxl__device_disk_dev_number(disk->vdev, NULL, NULL);
+
+    QMP_PARAMETERS_SPRINTF(&args, "device", "ide-%i", dev_number);
+    qmp_parameters_add_string(gc, &args, "target", "/dev/xvdc");
+    return qmp_run_command(gc, domid, "change", args, NULL, NULL);
+}
+
 int libxl__qmp_insert_cdrom(libxl__gc *gc, int domid,
                             const libxl_device_disk *disk)
 {
@@ -1081,6 +1092,7 @@ int libxl__qmp_insert_cdrom(libxl__gc *gc, int domid,
     QMP_PARAMETERS_SPRINTF(&args, "device", "ide-%i", dev_number);
 
     if (disk->format == LIBXL_DISK_FORMAT_EMPTY) {
+        qmp_parameters_add_bool(gc, &args, "force", true);
         return qmp_run_command(gc, domid, "eject", args, NULL, NULL);
     } else {
         qmp_parameters_add_string(gc, &args, "target", disk->pdev_path);

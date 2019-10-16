@@ -1412,6 +1412,12 @@ int libxl__prepare_sockaddr_un(libxl__gc *gc,
     return 0;
 }
 
+int libxl_util_xs_read(libxl_ctx *ctx, char *path, char **out)
+{
+    *out = xs_read(ctx->xsh, XBT_NULL, path, NULL);
+    return 0;
+}
+
 /*
  * Local variables:
  * mode: C
