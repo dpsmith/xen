@@ -789,7 +789,8 @@ int libxl__device_destroy(libxl__gc *gc, libxl__device *dev)
             libxl__xs_path_cleanup(gc, t, be_path);
         }
 
-        if (dev->kind == LIBXL__DEVICE_KIND_VIF) {
+        if (dev->kind == LIBXL__DEVICE_KIND_VIF ||
+            dev->kind == LIBXL__DEVICE_KIND_VWIF) {
             libxl__xs_path_cleanup(gc, t, be_path);
         }
 
@@ -1337,7 +1338,9 @@ static void device_destroy_be_watch_cb(libxl__egc *egc,
      * in xenstore. NDVM doesn't do that, so let's not wait forever
      * here. libxl will take care of the xenstore nodes later
      */
-    if (dir && aodev->dev->kind != LIBXL__DEVICE_KIND_VIF) {
+    if (dir &&
+        aodev->dev->kind != LIBXL__DEVICE_KIND_VIF &&
+        aodev->dev->kind != LIBXL__DEVICE_KIND_VWIF) {
         /* backend path still exists, wait a little longer... */
         return;
     }
@@ -1469,6 +1472,15 @@ int libxl__device_nextid(libxl__gc *gc, uint32_t domid,
         nextid = 0;
     else
         nextid = strtoul(l[nb - 1], NULL, 10) + 1;
+
+    /* We need VIFs and VWIFs the be on the same ID pool */
+    if (device == LIBXL__DEVICE_KIND_VIF) {
+        int nextidvwif;
+
+        nextidvwif = libxl__device_nextid(gc, domid, LIBXL__DEVICE_KIND_VWIF);
+        if (nextidvwif > nextid)
+            return nextidvwif;
+    }
 
     return nextid;
 }
@@ -1608,9 +1620,11 @@ static int add_device(libxl__egc *egc, libxl__ao *ao,
 
     switch(dev->backend_kind) {
     case LIBXL__DEVICE_KIND_VBD:
+    case LIBXL__DEVICE_KIND_VWIF:
     case LIBXL__DEVICE_KIND_VIF:
-        if (dev->backend_kind == LIBXL__DEVICE_KIND_VBD) dguest->num_vbds++;
-        if (dev->backend_kind == LIBXL__DEVICE_KIND_VIF) dguest->num_vifs++;
+        if (dev->backend_kind == LIBXL__DEVICE_KIND_VBD)  dguest->num_vbds++;
+        if (dev->backend_kind == LIBXL__DEVICE_KIND_VWIF) dguest->num_vifs++;
+        if (dev->backend_kind == LIBXL__DEVICE_KIND_VIF)  dguest->num_vifs++;
 
         GCNEW(aodev);
         libxl__prepare_ao_device(ao, aodev);
@@ -1656,9 +1670,11 @@ static int remove_device(libxl__egc *egc, libxl__ao *ao,
 
     switch(ddev->dev->backend_kind) {
     case LIBXL__DEVICE_KIND_VBD:
+    case LIBXL__DEVICE_KIND_VWIF:
     case LIBXL__DEVICE_KIND_VIF:
-        if (dev->backend_kind == LIBXL__DEVICE_KIND_VBD) dguest->num_vbds--;
-        if (dev->backend_kind == LIBXL__DEVICE_KIND_VIF) dguest->num_vifs--;
+        if (dev->backend_kind == LIBXL__DEVICE_KIND_VBD)  dguest->num_vbds--;
+        if (dev->backend_kind == LIBXL__DEVICE_KIND_VWIF) dguest->num_vifs--;
+        if (dev->backend_kind == LIBXL__DEVICE_KIND_VIF)  dguest->num_vifs--;
 
         GCNEW(aodev);
         libxl__prepare_ao_device(ao, aodev);

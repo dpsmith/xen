@@ -58,6 +58,7 @@ static int libxl__device_nic_setdefault(libxl__gc *gc, uint32_t domid,
 {
     int rc;
 
+    libxl_defbool_setdefault(&nic->wireless, false);
     if (!nic->mtu)
         nic->mtu = 1492;
     if (!nic->model) {
@@ -259,6 +260,7 @@ static int libxl__nic_from_xenstore(libxl__gc *gc, const char *libxl_path,
     int rc;
 
     libxl_device_nic_init(nic);
+    libxl_defbool_setdefault(&nic->wireless, false);
 
     rc = libxl__xs_read_checked(gc, XBT_NULL,
                                 GCSPRINTF("%s/handle", libxl_path), &tmp);
@@ -277,6 +279,10 @@ static int libxl__nic_from_xenstore(libxl__gc *gc, const char *libxl_path,
         rc = ERROR_FAIL;
         goto out;
     }
+
+    if (strstr(tmp, "vwif"))
+        libxl_defbool_set(&nic->wireless, true);
+
     rc = libxl__backendpath_parse_domid(gc, tmp, &nic->backend_domid);
     if (rc) goto out;
 
@@ -413,10 +419,17 @@ int libxl_device_nic_getinfo(libxl_ctx *ctx, uint32_t domid,
 
     nicinfo->devid = nic->devid;
 
-    nicpath = libxl__domain_device_frontend_path(gc, domid, nicinfo->devid,
-                                                 LIBXL__DEVICE_KIND_VIF);
-    libxl_path = libxl__domain_device_libxl_path(gc, domid, nicinfo->devid,
-                                                 LIBXL__DEVICE_KIND_VIF);
+    if (libxl_defbool_val(nic->wireless)) {
+        nicpath = libxl__domain_device_frontend_path(gc, domid, nicinfo->devid,
+                                                     LIBXL__DEVICE_KIND_VWIF);
+        libxl_path = libxl__domain_device_libxl_path(gc, domid, nicinfo->devid,
+                                                     LIBXL__DEVICE_KIND_VWIF);
+    } else {
+        nicpath = libxl__domain_device_frontend_path(gc, domid, nicinfo->devid,
+                                                     LIBXL__DEVICE_KIND_VIF);
+        libxl_path = libxl__domain_device_libxl_path(gc, domid, nicinfo->devid,
+                                                     LIBXL__DEVICE_KIND_VIF);
+    }
     nicinfo->backend = xs_read(ctx->xsh, XBT_NULL,
                                 GCSPRINTF("%s/backend", libxl_path), NULL);
     if (!nicinfo->backend) {
@@ -502,9 +515,73 @@ out:
 }
 
 static LIBXL_DEFINE_UPDATE_DEVID(nic)
-static LIBXL_DEFINE_DEVICE_FROM_TYPE(nic)
+/*
+ * OpenXT: we need a special case for vwifs, so we can't use this macro:
+ * static LIBXL_DEFINE_DEVICE_FROM_TYPE(nic)
+ */
+static int libxl__device_from_nic(libxl__gc *gc, uint32_t domid,
+                                  libxl_device_nic *type,
+                                  libxl__device *device)
+{
+    device->backend_devid   = type->devid;
+    device->backend_domid   = type->backend_domid;
+    device->backend_kind    = libxl__nic_devtype.type;
+    device->devid           = type->devid;
+    device->domid           = domid;
+    device->kind            = libxl__nic_devtype.type;
+    /* Generic code above, OpenXT vwif bits below */
+    if (libxl_defbool_val(type->wireless)) {
+        device->backend_kind = LIBXL__DEVICE_KIND_VWIF;
+        device->kind         = LIBXL__DEVICE_KIND_VWIF;
+    }
 
-LIBXL_DEFINE_DEVID_TO_DEVICE(nic)
+    return 0;
+}
+
+/*
+ * OpenXT: we need a special case for vwifs, so we can't use this macro:
+ * LIBXL_DEFINE_DEVID_TO_DEVICE(nic)
+ */
+int libxl_devid_to_device_nic(libxl_ctx *ctx, uint32_t domid,
+                              int devid,
+                              libxl_device_nic *type)
+{
+    GC_INIT(ctx);
+
+    char *device_path;
+    const char *tmp;
+    int rc;
+
+    libxl_device_nic_init(type);
+
+    device_path = GCSPRINTF("%s/device/%s/%d",
+                            libxl__xs_libxl_path(gc, domid),
+                            "vif", devid);
+
+    if (libxl__xs_read_mandatory(gc, XBT_NULL, device_path, &tmp)) {
+        device_path = GCSPRINTF("%s/device/%s/%d",
+                                libxl__xs_libxl_path(gc, domid),
+                                "vwif", devid);
+        if (libxl__xs_read_mandatory(gc, XBT_NULL, device_path, &tmp)) {
+            rc = ERROR_NOTFOUND;
+            goto out;
+        }
+    }
+
+    if (libxl__nic_devtype.from_xenstore) {
+        rc = libxl__nic_devtype.from_xenstore(gc, device_path,
+                                              devid, type);
+        if (rc) goto out;
+    }
+
+    rc = 0;
+
+ out:
+
+    GC_FREE;
+    return rc;
+}
+
 LIBXL_DEFINE_DEVICE_ADD(nic)
 LIBXL_DEFINE_DEVICES_ADD(nic)
 LIBXL_DEFINE_DEVICE_REMOVE(nic)

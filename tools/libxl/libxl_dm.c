@@ -1491,9 +1491,12 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                                                 LIBXL_NIC_TYPE_VIF_IOEMU);
                 flexarray_append(dm_args, "-device");
                 flexarray_append(dm_args,
-                   GCSPRINTF("%s,id=vif%d,netdev=net%d,mac=%s",
-                             nics[i].model, nics[i].devid,
-                             nics[i].devid, smac));
+                   GCSPRINTF("%s,id=%s%d,netdev=net%d,mac=%s",
+                             nics[i].model,
+                             (libxl_defbool_val(nics[i].wireless)) ? "vwif" : "vif",
+                             nics[i].devid,
+                             nics[i].devid,
+                             smac));
                 flexarray_append(dm_args, "-netdev");
                 flexarray_append(dm_args,
                                  GCSPRINTF("type=tap,id=net%d,ifname=%s,"
@@ -1997,6 +2000,9 @@ static void libxl__dm_vifs_from_hvm_guest_config(libxl__gc *gc,
         libxl_device_nic_init(&dm_config->nics[i]);
         libxl_device_nic_copy(ctx, &dm_config->nics[i], &guest_config->nics[i]);
         dm_config->nics[i].nictype = LIBXL_NIC_TYPE_VIF;
+        /* Stubdoms use Linux netfront, which doesn't handle VWIFs */
+        libxl_defbool_set(&dm_config->nics[i].wireless, false);
+
         if (dm_config->nics[i].ifname)
             dm_config->nics[i].ifname = GCSPRINTF("%s" TAP_DEVICE_SUFFIX,
                                                   dm_config->nics[i].ifname);

@@ -60,7 +60,8 @@ static char **get_hotplug_env(libxl__gc *gc,
     env[nr++] = GCSPRINTF("backend/%s/%u/%d", type, dev->domid, dev->devid);
     env[nr++] = "XENBUS_BASE_PATH";
     env[nr++] = "backend";
-    if (dev->backend_kind == LIBXL__DEVICE_KIND_VIF) {
+    if (dev->backend_kind == LIBXL__DEVICE_KIND_VIF ||
+        dev->backend_kind == LIBXL__DEVICE_KIND_VWIF) {
         libxl_nic_type nictype;
         char *gatewaydev;
 
@@ -216,6 +217,7 @@ int libxl__get_hotplug_script_info(libxl__gc *gc, libxl__device *dev,
         rc = libxl__hotplug_disk(gc, dev, args, env, action);
         break;
     case LIBXL__DEVICE_KIND_VIF:
+    case LIBXL__DEVICE_KIND_VWIF:
         /*
          * If domain has a stubdom we don't have to execute hotplug scripts
          * for emulated interfaces

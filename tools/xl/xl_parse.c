@@ -581,6 +581,8 @@ int parse_nic_config(libxl_device_nic *nic, XLU_Config **config, char *token)
         replace_string(&nic->colo_checkpoint_port, oparg);
     } else if (MATCH_OPTION("accel", token, oparg)) {
         fprintf(stderr, "the accel parameter for vifs is currently not supported\n");
+    } else if (MATCH_OPTION("wireless", token, oparg)) {
+        libxl_defbool_set(&nic->wireless, (oparg && *oparg == '1'));
     } else if (MATCH_OPTION("devid", token, oparg)) {
         nic->devid = parse_ulong(oparg);
     } else {
