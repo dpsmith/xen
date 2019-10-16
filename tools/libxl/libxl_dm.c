@@ -1777,7 +1777,7 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
             } else if ((disks[i].is_cdrom) && (b_info->stubdomain_version ==
                                                LIBXL_STUBDOMAIN_VERSION_LINUX))
             {
-                format = libxl__qemu_disk_format_string(LIBXL_DISK_FORMAT_HOST_CDROM);
+                format = libxl__qemu_disk_format_string(LIBXL_DISK_FORMAT_HOST_DEVICE);
                 target_path = "/dev/xvdc";
             } else {
                 if (format == NULL) {
@@ -1866,6 +1866,14 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                              "qemu-xen doesn't support read-only AHCI disk drivers");
                         return ERROR_INVAL;
                     }
+                    if (b_info->stubdomain_version == LIBXL_STUBDOMAIN_VERSION_LINUX) {
+                        target_path = (char *[]) {"/dev/xvda",
+                                                  "/dev/xvdb",
+                                                  "/dev/xvdc",
+                                                  "/dev/xvdd",
+                                                  "/dev/xvde",
+                                                  "/dev/xvdf",} [disk];
+                    }
                     flexarray_vappend(dm_args, "-drive",
                         GCSPRINTF("file=%s,if=none,id=ahcidisk-%d,format=%s,cache=writeback",
                         target_path, disk, format),
@@ -1879,8 +1887,10 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                         return ERROR_INVAL;
                     }
                     if (b_info->stubdomain_version == LIBXL_STUBDOMAIN_VERSION_LINUX) {
-                        target_path = "/dev/xvda";
-                        format = libxl__qemu_disk_format_string(LIBXL_DISK_FORMAT_HOST_DEVICE);
+                        target_path = (char *[]) {"/dev/xvda",
+                                                  "/dev/xvdb",
+                                                  "/dev/xvdc",
+                                                  "/dev/xvdd"} [disk];
                     }
                     if (colo_mode == LIBXL__COLO_SECONDARY) {
                         drive = libxl__sprintf
