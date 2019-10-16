@@ -1209,6 +1209,62 @@ int libxl_domid_valid_guest(uint32_t domid)
     return domid > 0 && domid < DOMID_FIRST_RESERVED;
 }
 
+int libxl_update_state_direct(libxl_ctx *ctx, libxl_uuid xl_uuid, const char * state)
+{
+    char path[sizeof("/state/00000000-0000-0000-0000-000000000000/state")];
+    char uuid[37];
+
+    uuid_unparse(xl_uuid.uuid, uuid);
+    sprintf(path, "/state/%s/state", uuid);
+
+    if (!xs_write(ctx->xsh, XBT_NULL, path, state, strlen(state)))
+    {
+        fprintf(stderr, "Failed to write the xenstore node: %s with state: %s\n", path, state);
+    }
+
+    return 0;
+
+}
+
+int libxl_update_state(libxl_ctx *ctx, uint32_t domid_in, const char *state)
+{
+    int nb_domains, i;
+    uint32_t domid, target_domid;
+    char path[sizeof("/state/00000000-0000-0000-0000-000000000000/state")];
+    char uuid[37];
+    libxl_dominfo *dominfo;
+    libxl_uuid *xl_uuid = NULL;
+
+    if(libxl_is_stubdom(ctx, domid_in, &target_domid))
+        return 0;
+
+    dominfo = libxl_list_domain(ctx, &nb_domains);
+
+    for(i = 0; i < nb_domains; i++)
+    {
+        domid = dominfo[i].domid;
+        if (domid == domid_in)
+        {
+            xl_uuid = &dominfo[i].uuid;
+            break;
+        }
+    }
+    if (!xl_uuid){
+        fprintf(stderr, "Failed to find the uuid\n");
+        return -1;
+    }
+
+    uuid_unparse(xl_uuid->uuid, uuid);
+    sprintf(path, "/state/%s/state", uuid);
+
+    if (!xs_write(ctx->xsh, XBT_NULL, path, state, strlen(state)))
+    {
+        fprintf(stderr, "Failed to write the xenstore node: %s with state: %s\n", path, state);
+    }
+    free(dominfo);
+    return 0;
+}
+
 void libxl_string_copy(libxl_ctx *ctx, char **dst, char * const*src)
 {
     GC_INIT(ctx);

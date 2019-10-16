@@ -1006,6 +1006,12 @@ static void initiate_domain_create(libxl__egc *egc,
     dcs->sdss.dm.guest_domid = 0; /* means we haven't spawned */
 
     /*
+     * OpenXT: XenMgr synchronizes with this state change to apply the argo
+     * firewall rules and requires it to occur after libxl__domain_make(..).
+     */
+    libxl_update_state(ctx, domid, "creating-devices");
+
+    /*
      * Set the dm version quite early so that libxl doesn't have to pass the
      * build info around just to know if the domain has a device model or not.
      */

@@ -498,6 +498,8 @@ int libxl_domain_suspend(libxl_ctx *ctx, uint32_t domid, int fd, int flags,
         goto out_err;
     }
 
+    libxl_update_state(ctx, domid, "suspending");
+
     libxl__domain_save_state *dss;
     GCNEW(dss);
 
@@ -567,6 +569,9 @@ int libxl_domain_pause(libxl_ctx *ctx, uint32_t domid)
         GC_FREE;
         return ERROR_FAIL;
     }
+
+    libxl_update_state(ctx, domid, "paused");
+
     GC_FREE;
     return 0;
 }
@@ -614,6 +619,9 @@ int libxl_domain_unpause(libxl_ctx *ctx, uint32_t domid)
         }
     }
     ret = xc_domain_unpause(ctx->xch, domid);
+
+    libxl_update_state(ctx, domid, "running");
+
     if (ret<0) {
         LOGED(ERROR, domid, "Unpausing domain");
         rc = ERROR_FAIL;

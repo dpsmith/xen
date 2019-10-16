@@ -45,6 +45,7 @@ static void unpause_domain(uint32_t domid)
 static void destroy_domain(uint32_t domid, int force)
 {
     int rc;
+    libxl_uuid uuid;
 
     if (domid == 0 && !force) {
         fprintf(stderr, "Not destroying domain 0; use -f to force.\n"
@@ -52,8 +53,18 @@ static void destroy_domain(uint32_t domid, int force)
                         "hardware domain and toolstack.\n\n");
         exit(EXIT_FAILURE);
     }
+    
+    rc = libxl_domid_to_uuid(ctx, &uuid, domid);
+    if (rc) {
+        fprintf(stderr, "domid to uuid failed during domain destroy\n");
+        exit(EXIT_FAILURE);
+    }
     rc = libxl_domain_destroy(ctx, domid, 0);
-    if (rc) { fprintf(stderr,"destroy failed (rc=%d)\n",rc); exit(EXIT_FAILURE); }
+    if (rc) {
+        fprintf(stderr,"destroy failed (rc=%d)\n",rc);
+        exit(EXIT_FAILURE);
+    }
+    libxl_update_state_direct(ctx, uuid, "shutdown");
 }
 
 int main_pause(int argc, char **argv)
@@ -103,6 +114,7 @@ static void reboot_domain(uint32_t domid, libxl_evgen_domain_death **deathw,
     int rc;
 
     fprintf(stderr, "Rebooting domain %u\n", domid);
+    libxl_update_state(ctx, domid, "rebooting");
     rc=libxl_domain_reboot(ctx, domid);
     if (rc == ERROR_NOPARAVIRT) {
         if (fallback_trigger) {
@@ -136,6 +148,7 @@ static void shutdown_domain(uint32_t domid,
     int rc;
 
     fprintf(stderr, "Shutting down domain %u\n", domid);
+    libxl_update_state(ctx, domid, "shutdowning");
     rc=libxl_domain_shutdown(ctx, domid);
     if (rc == ERROR_NOPARAVIRT) {
         if (fallback_trigger) {
@@ -403,9 +416,11 @@ static domain_restart_type handle_domain_death(uint32_t *r_domid,
         break;
     case LIBXL_SHUTDOWN_REASON_REBOOT:
         action = d_config->on_reboot;
+        libxl_update_state(ctx, *r_domid, "rebooting");
         break;
     case LIBXL_SHUTDOWN_REASON_SUSPEND:
         LOG("Domain has suspended.");
+        libxl_update_state(ctx, *r_domid, "suspended");
         return 0;
     case LIBXL_SHUTDOWN_REASON_CRASH:
         action = d_config->on_crash;
@@ -971,6 +986,8 @@ start:
         notify_pipe[0] = notify_pipe[1] = -1;
     }
 
+    libxl_update_state(ctx, domid, "created");
+
     if (!paused)
         libxl_domain_unpause(ctx, domid);
 
@@ -1074,6 +1091,9 @@ start:
                  * re-creation fails sometimes.
                  */
                 LOG("Done. Rebooting now");
+                libxl_update_state_direct(ctx, d_config.c_info.uuid, "shutdown"); //Sleep here because daemons with an xs_watch on this node
+                sleep(2);                                                         //won't see the "shutdown" event, just the "rebooted" one.
+                libxl_update_state_direct(ctx, d_config.c_info.uuid, "rebooted"); //Once this is fixed in xenstore libs, sleep can be removed.
                 sleep(2);
                 goto start;
 
@@ -1081,6 +1101,7 @@ start:
                 LOG("Done. Exiting now");
                 libxl_event_free(ctx, event);
                 ret = 0;
+                libxl_update_state_direct(ctx, d_config.c_info.uuid, "shutdown");
                 goto out;
 
             default:
@@ -1091,6 +1112,7 @@ start:
             LOG("Domain %u has been destroyed.", domid);
             libxl_event_free(ctx, event);
             ret = 0;
+            libxl_update_state(ctx, domid, "shutdown");
             goto out;
 
         case LIBXL_EVENT_TYPE_DISK_EJECT:
@@ -1112,6 +1134,7 @@ error_out:
     release_lock();
     if (libxl_domid_valid_guest(domid)) {
         libxl_domain_destroy(ctx, domid, 0);
+        libxl_update_state_direct(ctx, d_config.c_info.uuid, "shutdown");
         domid = INVALID_DOMID;
     }
 
