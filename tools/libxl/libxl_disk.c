@@ -163,17 +163,6 @@ static int libxl__device_disk_setdefault(libxl__gc *gc, uint32_t domid,
     rc = libxl__resolve_domid(gc, disk->backend_domname, &disk->backend_domid);
     if (rc < 0) return rc;
 
-    /* Force Qdisk backend for CDROM devices of guests with a device model. */
-    if (disk->is_cdrom != 0 &&
-        libxl__domain_type(gc, domid) == LIBXL_DOMAIN_TYPE_HVM) {
-        if (!(disk->backend == LIBXL_DISK_BACKEND_QDISK ||
-              disk->backend == LIBXL_DISK_BACKEND_UNKNOWN)) {
-            LOGD(ERROR, domid, "Backend for CD devices on HVM guests must be Qdisk");
-            return ERROR_FAIL;
-        }
-        disk->backend = LIBXL_DISK_BACKEND_QDISK;
-    }
-
     rc = libxl__device_disk_set_backend(gc, disk);
     return rc;
 }
