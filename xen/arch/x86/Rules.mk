@@ -37,7 +37,7 @@ CFLAGS += -mno-red-zone -fpic -fno-asynchronous-unwind-tables
 
 # Xen doesn't use SSE interally.  If the compiler supports it, also skip the
 # SSE setup for variadic function calls.
-CFLAGS += -mno-sse $(call cc-option,$(CC),-mskip-rax-setup)
+CFLAGS += -mno-sse -mfpmath=387 $(call cc-option,$(CC),-mskip-rax-setup)
 
 # -fvisibility=hidden reduces -fpic cost, if it's available
 ifneq ($(call cc-option,$(CC),-fvisibility=hidden,n),n)
