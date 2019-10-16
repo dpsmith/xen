@@ -56,6 +56,51 @@ int main_button_press(int argc, char **argv)
     return 0;
 }
 
+int main_acpi(int argc, char **argv)
+{
+    int32_t domid;
+    uint32_t acpi_state;
+    int opt;
+
+    SWITCH_FOREACH_OPT(opt, "", NULL, "domid", 1) {
+        /* No options */
+    }
+
+    domid = atoi(argv[optind]);
+
+    if (libxl_get_acpi_state(ctx, domid, &acpi_state)) {
+        fprintf(stderr, "Can't get acpi state with domid of '%d', maybe this domain does not           exist.\n", domid);
+        return 1;
+    }
+
+    printf("%d\n", acpi_state);
+
+    return 0;
+
+}
+
+int main_uuid(int argc, char **argv)
+{
+    int32_t domid;
+    int opt;
+    char *uuid = NULL;
+
+    SWITCH_FOREACH_OPT(opt, "", NULL, "uuid", 1) {
+        /* No options */
+    }
+
+    uuid = argv[optind];
+
+    if (libxl_uuid_to_domid(ctx, uuid, &domid)){
+        fprintf(stderr, "Can't get domid with domain uuid of '%s', maybe this domain does not          exist.\n", uuid);
+        return 1;
+    }
+
+    printf("%d\n", domid);
+
+    return 0;
+}
+
 int main_rename(int argc, char **argv)
 {
     uint32_t domid;
@@ -106,7 +151,15 @@ int main_trigger(int argc, char **argv)
         }
     }
 
-    libxl_send_trigger(ctx, domid, trigger, vcpuid);
+    if (trigger == LIBXL_TRIGGER_SLEEP){
+        int rc;
+        rc = libxl_domain_sleep(ctx, domid);
+        if(rc){
+            return -1;
+        }
+    } else {
+        libxl_send_trigger(ctx, domid, trigger, vcpuid);
+    }
 
     return EXIT_SUCCESS;
 }

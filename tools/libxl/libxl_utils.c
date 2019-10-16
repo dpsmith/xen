@@ -94,6 +94,65 @@ int libxl_name_to_domid(libxl_ctx *ctx, const char *name,
     return ret;
 }
 
+int libxl_get_acpi_state(libxl_ctx *ctx, int32_t domid, uint32_t *acpi_state)
+{
+    unsigned long hvm_s_state = 0;
+    int ret;
+    ret = xc_get_hvm_param(ctx->xch, domid, HVM_PARAM_ACPI_S_STATE, &hvm_s_state);
+    if (ret < 0) {
+        hvm_s_state = INVALID_ACPI_STATE; //since unsigned, use invalid acpi state
+    }
+    *acpi_state = hvm_s_state;
+    return 0;
+}
+
+int libxl_uuid_to_domid(libxl_ctx *ctx, const char *uuid_in, int32_t *domid)
+{
+
+    int i, nb_domains;
+    libxl_dominfo *dominfo;
+    libxl_uuid uuid, uuid2;
+    int ret = 0;
+    *domid = -1;
+    libxl_uuid_from_string(&uuid2, uuid_in);
+    dominfo = libxl_list_domain(ctx, &nb_domains);
+    if (!dominfo)
+        return ERROR_NOMEM;
+
+    for (i = 0; i < nb_domains; i++) {
+        uuid = dominfo[i].uuid;
+        if (libxl_uuid_compare(&uuid, &uuid2) == 0 && libxl_domid_to_name(ctx, dominfo[i].domid)) {
+            *domid = dominfo[i].domid;
+            ret = 0;
+            break;
+        }
+    }
+    free(dominfo);
+    return ret;
+}
+
+int libxl_domid_to_uuid(libxl_ctx *ctx, libxl_uuid *uuid, uint32_t domid_in)
+{
+    int nb_domains, i;
+    uint32_t domid;
+    libxl_dominfo *dominfo;
+
+    dominfo = libxl_list_domain(ctx, &nb_domains);
+
+    for(i = 0; i < nb_domains; i++)
+    {
+        domid = dominfo[i].domid;
+        if (domid == domid_in)
+        {
+            libxl_uuid_copy(ctx, uuid, &dominfo[i].uuid);
+            return 0;
+        }
+    }
+
+    free(dominfo);
+    return -1;
+}
+
 int libxl_domain_qualifier_to_domid(libxl_ctx *ctx, const char *name,
                                     uint32_t *domid)
 {

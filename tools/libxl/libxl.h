@@ -1542,6 +1542,8 @@ int libxl_domain_remus_start(libxl_ctx *ctx, libxl_domain_remus_info *info,
 
 int libxl_domain_shutdown(libxl_ctx *ctx, uint32_t domid);
 int libxl_domain_reboot(libxl_ctx *ctx, uint32_t domid);
+int libxl_domain_sleep(libxl_ctx *ctx, uint32_t domid);
+int libxl_domain_hibernate(libxl_ctx *ctx, uint32_t domid);
 int libxl_domain_destroy(libxl_ctx *ctx, uint32_t domid,
                          const libxl_asyncop_how *ao_how)
                          LIBXL_EXTERNAL_CALLERS_ONLY;

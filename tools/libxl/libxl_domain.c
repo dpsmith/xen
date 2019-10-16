@@ -721,6 +721,24 @@ int libxl_domain_reboot(libxl_ctx *ctx, uint32_t domid)
     return ret;
 }
 
+int libxl_domain_sleep(libxl_ctx *ctx, uint32_t domid)
+{
+    GC_INIT(ctx);
+    int ret;
+    ret = libxl__domain_pvcontrol(gc, domid, "s3");
+    GC_FREE;
+    return ret;
+}
+
+int libxl_domain_hibernate(libxl_ctx *ctx, uint32_t domid)
+{
+    GC_INIT(ctx);
+    int ret;
+    ret = libxl__domain_pvcontrol(gc, domid, "hibernate");
+    GC_FREE;
+    return ret;
+}
+
 static void domain_death_occurred(libxl__egc *egc,
                                   libxl_evgen_domain_death **evg_upd,
                                   const char *why) {

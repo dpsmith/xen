@@ -169,6 +169,7 @@ libxl_trigger = Enumeration("trigger", [
     (4, "INIT"),
     (5, "RESET"),
     (6, "S3RESUME"),
+    (7, "HIBERNATE"),
     ])
 
 libxl_tsc_mode = Enumeration("tsc_mode", [
@@ -342,6 +343,7 @@ libxl_dominfo = Struct("dominfo",[
     #
     # Otherwise set to a value guaranteed not to clash with any valid
     # LIBXL_SHUTDOWN_REASON_* constant.
+    ("power_command", uint32),
     ("shutdown_reason", libxl_shutdown_reason),
     ("outstanding_memkb",  MemKB),
     ("current_memkb",   MemKB),

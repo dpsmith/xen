@@ -140,6 +140,39 @@ static void reboot_domain(uint32_t domid, libxl_evgen_domain_death **deathw,
     }
 }
 
+static void hibernate_domain(uint32_t domid,
+                            libxl_evgen_domain_death **deathw,
+                            libxl_ev_user for_user,
+                            int fallback_trigger)
+{
+   int rc;
+   libxl_update_state(ctx, domid, "shutdowning");
+   rc=libxl_domain_hibernate(ctx, domid);
+   if (rc == ERROR_NOPARAVIRT) {
+       if (fallback_trigger) {
+           fprintf(stderr, "PV control interface not available:"
+                   " sending ACPI power button event.\n");
+           rc = libxl_send_trigger(ctx, domid, LIBXL_TRIGGER_HIBERNATE, 0);
+       } else {
+           fprintf(stderr, "PV control interface not available:"
+                   " external graceful hibernate not possible.\n");
+       }
+   }
+
+   if (rc) {
+       fprintf(stderr, "hibernate failed (rc=%d)\n",rc);
+       exit(-1);
+   }
+
+   if (deathw) {
+       rc = libxl_evenable_domain_death(ctx, domid, for_user, deathw);
+       if (rc) {
+           fprintf(stderr,"wait for death failed (evgen, rc=%d)\n",rc);
+           exit(-1);
+       }
+   }
+}
+
 static void shutdown_domain(uint32_t domid,
                             libxl_evgen_domain_death **deathw,
                             libxl_ev_user for_user,
@@ -205,6 +238,43 @@ static void wait_for_domain_deaths(libxl_evgen_domain_death **deathws, int nr)
         }
         libxl_event_free(ctx, event);
     }
+}
+
+int main_hibernate(int argc, char **argv)
+{
+
+    void (*fn)(uint32_t domid,
+               libxl_evgen_domain_death **, libxl_ev_user, int) =
+        &hibernate_domain;
+   int opt;
+   int wait_for_it = 0;
+   static struct option opts[] = {
+       {"wait", 0, 0, 'w'}
+   };
+
+   SWITCH_FOREACH_OPT(opt, "w", opts, "hibernate", 0) {
+       case 'w':
+           wait_for_it = 1;
+           break;
+   }
+
+   if (!argv[optind]) {
+       fprintf(stderr, "You must specify a domain id.\n\n");
+       return -1;
+   }
+
+   libxl_evgen_domain_death *deathw = NULL;
+   uint32_t domid = find_domain(argv[optind]);
+
+   /* Set Fallback Trigger to false for now since xen doesn't have a hibernate trigger,
+       but maybe in the future */
+   fn(domid, wait_for_it ? &deathw : NULL, 0, 0);
+
+   if (wait_for_it)
+       wait_for_domain_deaths(&deathw, 1);
+
+   return 0;
+
 }
 
 static int main_shutdown_or_reboot(int do_reboot, int argc, char **argv)

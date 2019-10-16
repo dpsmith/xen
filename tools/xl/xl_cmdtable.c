@@ -77,6 +77,13 @@ struct cmd_spec cmd_table[] = {
       "                        no PV drivers.\n"
       "-w, --wait              Wait for guest(s) to shutdown.\n"
     },
+    { "hibernate",
+      &main_hibernate, 0, 1,
+      "Issue a hibernate signal to a domain, only works for PV",
+      "[options] <Domain>",
+      "-h                      Print this help.\n"
+      "-w, --wait              Wait for guest to shutdown.\n"
+    },
     { "reboot",
       &main_reboot, 0, 1,
       "Issue a reboot signal to a domain",
@@ -294,6 +301,16 @@ struct cmd_spec cmd_table[] = {
       &main_domname, 0, 0,
       "Convert a domain id to domain name",
       "<DomainId>",
+    },
+    { "acpi-state",
+      &main_acpi, 0, 0,
+      "Return the acpi state for a domain",
+      "<DomainId>",
+    },
+    { "uuid-to-domid",
+      &main_uuid, 0, 0,
+      "Convert a uuid to domain id",
+      "<Uuid>",
     },
     { "rename",
       &main_rename, 0, 1,

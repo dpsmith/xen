@@ -25,6 +25,9 @@ char *libxl_basename(const char *name); /* returns string from strdup */
 
 unsigned long libxl_get_required_shadow_memory(unsigned long maxmem_kb, unsigned int smp_cpus);
 int libxl_name_to_domid(libxl_ctx *ctx, const char *name, uint32_t *domid);
+int libxl_uuid_to_domid(libxl_ctx *ctx, const char *uuid, int32_t *domid);
+int libxl_domid_to_uuid(libxl_ctx *ctx, libxl_uuid *uuid, uint32_t domid);
+int libxl_get_acpi_state(libxl_ctx *ctx, int32_t domid, uint32_t * acpi_state);
 int libxl_domain_qualifier_to_domid(libxl_ctx *ctx, const char *name, uint32_t *domid);
 char *libxl_domid_to_name(libxl_ctx *ctx, uint32_t domid);
 int libxl_cpupool_qualifier_to_cpupoolid(libxl_ctx *ctx, const char *p,
@@ -183,6 +186,8 @@ void libxl_string_copy(libxl_ctx *ctx, char **dst, char * const*src);
 
 
 #define LIBXL_FILLZERO(object) (memset(&(object), 0, sizeof((object))))
+
+#define INVALID_ACPI_STATE ~0
 
 #endif
 
