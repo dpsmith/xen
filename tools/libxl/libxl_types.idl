@@ -292,6 +292,10 @@ libxl_vga_interface_info = Struct("vga_interface_info", [
     ("kind",    libxl_vga_interface_type),
     ])
 
+libxl_display_info = Struct("display_info", [
+    ("kind",    string),
+    ])
+
 libxl_vnc_info = Struct("vnc_info", [
     ("enable",        libxl_defbool),
     # "address:port" that should be listened on
@@ -580,6 +584,7 @@ libxl_domain_build_info = Struct("domain_build_info",[
                                        ("nographic",        libxl_defbool),
                                        ("vga",              libxl_vga_interface_info),
                                        ("vnc",              libxl_vnc_info),
+                                       ("dm_display",       libxl_display_info),
                                        # keyboard layout, default is en-us keyboard
                                        ("keymap",           string),
                                        ("sdl",              libxl_sdl_info),

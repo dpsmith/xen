@@ -317,6 +317,14 @@ const char *libxl__domain_device_model(libxl__gc *gc,
     return dm;
 }
 
+const libxl_display_info *libxl__dm_display(const libxl_domain_config *guest_config)
+{
+    const libxl_display_info *display = NULL;
+    if (guest_config->b_info.type == LIBXL_DOMAIN_TYPE_HVM)
+        display = &guest_config->b_info.u.hvm.dm_display;
+    return display;
+}
+
 static int
 libxl__xc_device_get_rdm(libxl__gc *gc,
                          uint32_t flags,
@@ -1150,6 +1158,7 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
     const int num_disks = guest_config->num_disks;
     const int num_nics = guest_config->num_nics;
     const libxl_vnc_info *vnc = libxl__dm_vnc(guest_config);
+    const libxl_display_info *display = libxl__dm_display(guest_config);
     const libxl_sdl_info *sdl = dm_sdl(guest_config);
     const char *keymap = dm_keymap(guest_config);
     char *machinearg;
@@ -1262,11 +1271,6 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         flexarray_append(dm_args, vncarg);
     } /* OpenXT: no else here, we don't support "-vnc none" */
 
-    /*
-     * OpenXT: the default display backend is Surfman
-     */
-    flexarray_append_pair(dm_args, "-display", "surfman");
-
     if (sdl && !is_stubdom) {
         flexarray_append(dm_args, "-sdl");
         if (sdl->display)
@@ -1337,6 +1341,13 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         if (libxl_defbool_val(b_info->u.hvm.nographic) && (!sdl && !vnc)) {
             flexarray_append(dm_args, "-nographic");
         } else {
+            /*
+             * OpenXT: the default display backend is Surfman
+             */
+            if (display && display->kind)
+                flexarray_append_pair(dm_args, "-display", display->kind);
+            else
+                flexarray_append_pair(dm_args, "-display", "surfman");
             /* OpenXT: only add mouse if graphical */
             flexarray_append_pair(dm_args, "-device", "xenmou");
         }

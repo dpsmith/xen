@@ -2590,6 +2590,16 @@ skip_usbdev:
             b_info->u.hvm.vga.kind = l ? LIBXL_VGA_INTERFACE_TYPE_STD :
                                          LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
 
+        if (!xlu_cfg_get_string(config, "dm_display", &buf, 0)) {
+            char *surfstr = "surfman";
+            if (!strcmp(buf, surfstr)) {
+                b_info->u.hvm.dm_display.kind = strdup(surfstr);
+            } else {
+                fprintf(stderr, "Unknown dm_display \"%s\" specified\n", buf);
+                exit(1);
+            }
+        }
+
         if (!xlu_cfg_get_string(config, "hdtype", &buf, 0) &&
             libxl_hdtype_from_string(buf, &b_info->u.hvm.hdtype)) {
                 fprintf(stderr, "ERROR: invalid value \"%s\" for \"hdtype\"\n",
