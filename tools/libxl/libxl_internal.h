@@ -134,6 +134,13 @@
 #define MB(_mb)     (_AC(_mb, ULL) << 20)
 #define GB(_gb)     (_AC(_gb, ULL) << 30)
 
+#define QMP_HELPER_PATH "/usr/lib/xen/bin/qmp_helper"
+#define ATAPI_PT_HELPER_PATH "/usr/lib/xen/bin/atapi_pt_helper"
+#define AUDIO_HELPER_PATH "/usr/lib/xen/bin/audio_helper_start"
+#define XS_QMP_PID "qmp-helper-pid"
+#define XS_ATAPI_PT_PID "atapi-pt-helper-pid"
+#define XS_AUDIO_PID "audio-helper-pid"
+
 #define ROUNDUP(_val, _order)                                           \
     (((unsigned long)(_val)+(1UL<<(_order))-1) & ~((1UL<<(_order))-1))
 

@@ -1020,11 +1020,45 @@ static void domain_destroy_domid_cb(libxl__egc *egc,
                                     libxl__ev_child *destroyer,
                                     pid_t pid, int status);
 
+static void kill_openxt_helpers(libxl__gc *gc, uint32_t dm_domid)
+{
+    char *pid;
+    int rc;
+
+    /* Kill qmp-helper */
+    pid = libxl__xs_read(gc, XBT_NULL,
+                         GCSPRINTF("/local/domain/%d/"XS_QMP_PID, dm_domid));
+    if (pid) {
+        rc = kill(strtol(pid, NULL, 10), SIGKILL);
+        if (rc < 0)
+            LOG(ERROR, "Failed to kill qmp_helper for domain %d", dm_domid);
+    }
+
+    /* Kill atapi-pt-helper */
+    pid = libxl__xs_read(gc, XBT_NULL,
+                         GCSPRINTF("/local/domain/%d/"XS_ATAPI_PT_PID, dm_domid));
+    if (pid) {
+        rc = kill(strtol(pid, NULL, 10), SIGKILL);
+        if (rc < 0)
+            LOG(ERROR, "Failed to kill atapi-pt_helper for domain %d", dm_domid);
+    }
+
+    /* Kill audio-helper */
+    pid = libxl__xs_read(gc, XBT_NULL,
+                         GCSPRINTF("/local/domain/%d/"XS_AUDIO_PID, dm_domid));
+    if (pid) {
+        rc = kill(strtol(pid, NULL, 10), SIGKILL);
+        if (rc < 0)
+            LOG(ERROR, "Failed to kill audio_helper for domain %d", dm_domid);
+    }
+}
+
 void libxl__destroy_domid(libxl__egc *egc, libxl__destroy_domid_state *dis)
 {
     STATE_AO_GC(dis->ao);
     libxl_ctx *ctx = CTX;
     uint32_t domid = dis->domid;
+    uint32_t stubdom_id;
     char *dom_path;
     int rc, dm_present;
 
@@ -1042,7 +1076,8 @@ void libxl__destroy_domid(libxl__egc *egc, libxl__destroy_domid_state *dis)
 
     switch (libxl__domain_type(gc, domid)) {
     case LIBXL_DOMAIN_TYPE_HVM:
-        if (libxl_get_stubdom_id(CTX, domid)) {
+        stubdom_id = libxl_get_stubdom_id(CTX, domid);
+        if (stubdom_id) {
             dm_present = 0;
             break;
         }
@@ -1079,6 +1114,9 @@ void libxl__destroy_domid(libxl__egc *egc, libxl__destroy_domid_state *dis)
         libxl__destroy_device_model(egc, &dis->ddms);
         return;
     } else {
+        /* OpenXT: if the domain has a stubdom, we kill the stubdom helpers here */
+        if (stubdom_id)
+            kill_openxt_helpers(gc, stubdom_id);
         dm_destroy_cb(egc, &dis->ddms, 0);
         return;
     }

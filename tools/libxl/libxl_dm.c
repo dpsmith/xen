@@ -25,6 +25,10 @@
 #include <pwd.h>
 #include <grp.h>
 
+static bool need_qmp_helper = false;
+static bool need_atapi_helper = false;
+static bool need_audio_helper = false;
+
 static const char *libxl_tapif_script(libxl__gc *gc,
                                       const libxl_domain_build_info *info)
 {
@@ -1447,6 +1451,7 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         }
         if (b_info->u.hvm.soundhw) {
             flexarray_vappend(dm_args, "-soundhw", b_info->u.hvm.soundhw, NULL);
+            need_audio_helper = true;
         }
         if (!libxl__acpi_defbool_val(b_info)) {
             flexarray_append(dm_args, "-no-acpi");
@@ -2115,6 +2120,25 @@ char *libxl__stub_dm_name(libxl__gc *gc, const char *guest_name)
     return GCSPRINTF("%s-dm", guest_name);
 }
 
+static void fork_helper(libxl__gc *gc, const char *helper_path,
+                        const char *xs_pid_key, int guest_domid, int dm_domid)
+{
+    pid_t pid;
+
+    pid = fork();
+    if (pid == -1)
+        LOG(ERROR, "Failed to fork");
+    else if (pid == 0)
+        execl(helper_path, helper_path, GCSPRINTF("%d", guest_domid),
+              GCSPRINTF("%d", dm_domid), NULL);
+    else
+        libxl__xs_printf(gc, XBT_NULL,
+                         GCSPRINTF("%s/%s",
+                                   libxl__xs_get_dompath(gc, dm_domid),
+                                   xs_pid_key),
+                         "%d", pid);
+}
+
 void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
 {
     STATE_AO_GC(sdss->dm.spawn.ao);
@@ -2251,6 +2275,22 @@ void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
     if (ret) {
         ret = ERROR_FAIL;
         goto out;
+    }
+
+    if (need_qmp_helper) {
+        /* OpenXT: Start the QMP helper */
+        fork_helper(gc, QMP_HELPER_PATH, XS_QMP_PID, guest_domid, dm_domid);
+    }
+
+    if (need_atapi_helper) {
+        /* OpenXT: Start the ATAPI helper */
+        fork_helper(gc, ATAPI_PT_HELPER_PATH, XS_ATAPI_PT_PID, guest_domid,
+                    dm_domid);
+    }
+
+    if (need_audio_helper) {
+        /* OpenXT: Start the audio helper */
+        fork_helper(gc, AUDIO_HELPER_PATH, XS_AUDIO_PID, guest_domid, dm_domid);
     }
 
     libxl__store_libxl_entry(gc, guest_domid, "dm-version",
