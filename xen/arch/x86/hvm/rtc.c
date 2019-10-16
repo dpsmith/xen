@@ -578,6 +578,9 @@ static void rtc_set_time(RTCState *s)
       
     ASSERT(spin_is_locked(&s->lock));
 
+    /* Refresh current time */
+    *tm = gmtime(get_localtime(d));
+
     before = mktime(get_year(tm->tm_year), tm->tm_mon + 1, tm->tm_mday,
 		    tm->tm_hour, tm->tm_min, tm->tm_sec);
     
