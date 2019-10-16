@@ -51,6 +51,9 @@ boolean_param("unrestricted_guest", opt_unrestricted_guest_enabled);
 static bool_t __read_mostly opt_apicv_enabled = 1;
 boolean_param("apicv", opt_apicv_enabled);
 
+static bool_t __read_mostly opt_vmcs_shadowing = 1;
+boolean_param("vmcs_shadowing", opt_vmcs_shadowing);
+
 /*
  * These two parameters are used to config the controls for Pause-Loop Exiting:
  * ple_gap:    upper bound on the amount of time between two successive
@@ -370,6 +373,11 @@ static int vmx_init_vmcs_config(void)
     /* Virtualization exceptions are only enabled if VMFUNC is enabled */
     if ( !(_vmx_secondary_exec_control & SECONDARY_EXEC_ENABLE_VM_FUNCTIONS) )
         _vmx_secondary_exec_control &= ~SECONDARY_EXEC_ENABLE_VIRT_EXCEPTIONS;
+
+    if ( !opt_vmcs_shadowing ) {
+        _vmx_secondary_exec_control &= ~SECONDARY_EXEC_ENABLE_VMCS_SHADOWING;
+        printk(XENLOG_INFO "Disable VMCS Shadowing.\n");
+    }
 
     min = 0;
     opt = (VM_ENTRY_LOAD_GUEST_PAT | VM_ENTRY_LOAD_GUEST_EFER |
