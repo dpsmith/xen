@@ -326,11 +326,8 @@ static int disk_try_backend(disk_try_backend_args *a,
         if (libxl_defbool_val(a->disk->colo_enable))
             goto bad_colo;
 
-        if (a->disk->is_cdrom) {
-            LOG(DEBUG, "Disk vdev=%s, backend tap unsuitable for cdroms",
-                       a->disk->vdev);
-            return 0;
-        }
+        /* Note: keep going if the disk is a cdrom. tapdisk can handle them as "raw" */
+
         if (!libxl__blktap_enabled(a->gc)) {
             LOG(DEBUG, "Disk vdev=%s, backend tap unsuitable because blktap "
                        "not available", a->disk->vdev);
