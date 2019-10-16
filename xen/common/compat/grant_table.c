@@ -193,6 +193,9 @@ int compat_grant_table_op(unsigned int cmd,
             break;
 
         case GNTTABOP_transfer:
+#ifndef CONFIG_GRANT_TABLE_EXOTIC
+            rc = -ENOSYS;
+#else
             for ( n = 0; n < COMPAT_ARG_XLAT_SIZE / sizeof(*nat.xfer) && i < count && rc == 0; ++i, ++n )
             {
                 if ( unlikely(__copy_from_guest_offset(&cmp.xfer, cmp_uop, i, 1)) )
@@ -224,6 +227,7 @@ int compat_grant_table_op(unsigned int cmd,
                         rc = -EFAULT;
                 }
             }
+#endif
             break;
 
         case GNTTABOP_copy:

@@ -40,6 +40,16 @@ config GRANT_TABLE_V2
 	  If you do not require large memory support, say N.
 	  If you are paranoid, say N. If unsure, say Y.
 
+config GRANT_TABLE_EXOTIC
+	bool "Grant table exotic operations support" if EXPERT = "y"
+	depends on GRANT_TABLE
+	---help---
+	  Several of the grant table operations have fallen out of common
+	  use and are not required for the supported PV drivers.
+
+	  If you require backwards compatibility for old guests, say Y.
+	  If you are paranoid, say N. If unsure, say Y.
+
 config HAS_ALTERNATIVE
 	bool
 
