@@ -87,6 +87,7 @@ struct xsm_operations {
     int (*remove_from_physmap) (struct domain *d1, struct domain *d2);
     int (*map_gmfn_foreign) (struct domain *d, struct domain *t);
     int (*claim_pages) (struct domain *d);
+    int (*memory_translate) (struct domain *d);
 
     int (*console_io) (struct domain *d, int cmd);
 
@@ -386,6 +387,11 @@ static inline int xsm_map_gmfn_foreign (xsm_default_t def, struct domain *d, str
 static inline int xsm_claim_pages(xsm_default_t def, struct domain *d)
 {
     return xsm_ops->claim_pages(d);
+}
+
+static inline int xsm_memory_translate(xsm_default_t def, struct domain *d)
+{
+    return xsm_ops->memory_translate(d);
 }
 
 static inline int xsm_console_io (xsm_default_t def, struct domain *d, int cmd)

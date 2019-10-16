@@ -150,6 +150,7 @@ void __init xsm_fixup_ops (struct xsm_operations *ops)
     set_to_dummy_if_null(ops, pmu_op);
     set_to_dummy_if_null(ops, dm_op);
 #endif
+    set_to_dummy_if_null(ops, memory_translate);
     set_to_dummy_if_null(ops, xen_version);
     set_to_dummy_if_null(ops, domain_resource_map);
 #ifdef CONFIG_ARGO

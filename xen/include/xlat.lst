@@ -98,6 +98,8 @@
 !	mem_access_op			memory.h
 !	mem_acquire_resource		memory.h
 !	pod_target			memory.h
+!	translate_gpfn_list		memory.h
+!	release_mfn_list		memory.h
 !	remove_from_physmap		memory.h
 !	reserved_device_memory_map	memory.h
 ?	vmemrange			memory.h

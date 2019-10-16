@@ -2630,6 +2630,18 @@ int xc_domain_cacheflush(xc_interface *xch, uint32_t domid,
 /* Compat shims */
 #include "xenctrl_compat.h"
 
+int xc_domain_memory_translate_gpfn_list(xc_interface *xch,
+                                         uint32_t domid,
+                                         unsigned long nr_gpfns,
+                                         xen_pfn_t *gpfn_list,
+                                         xen_pfn_t *mfn_list);
+
+int xc_domain_memory_release_mfn_list(xc_interface *xch,
+                                      uint32_t domid,
+                                      unsigned long nr_mfns,
+                                      xen_pfn_t *mfn_list);
+
+
 #endif /* XENCTRL_H */
 
 /*

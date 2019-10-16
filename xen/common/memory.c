@@ -510,6 +510,162 @@ static bool propagate_node(unsigned int xmf, unsigned int *memflags)
     return true;
 }
 
+static long translate_gpfn_list(
+    XEN_GUEST_HANDLE(xen_translate_gpfn_list_t) uop, unsigned long *progress)
+{
+    struct xen_translate_gpfn_list op;
+    unsigned long i;
+    xen_pfn_t gpfn;
+    xen_pfn_t mfn;
+    struct domain *d;
+    struct page_info *page;
+    int rc;
+
+    if ( copy_from_guest(&op, uop, 1) )
+        return -EFAULT;
+
+    /* Is size too large for us to encode a continuation? */
+    if ( op.nr_gpfns > (ULONG_MAX >> MEMOP_EXTENT_SHIFT) )
+        return -EINVAL;
+
+    if ( !guest_handle_subrange_okay(op.gpfn_list, *progress, op.nr_gpfns-1) ||
+         !guest_handle_subrange_okay(op.mfn_list, *progress, op.nr_gpfns-1) )
+        return -EFAULT;
+
+    d = rcu_lock_domain_by_any_id(op.domid);
+    if ( d == NULL )
+        return -ESRCH;
+
+    rc = xsm_memory_translate(XSM_PRIV, d);
+    if ( rc )
+    {
+        rcu_unlock_domain(d);
+        return rc;
+    }
+
+    if ( !paging_mode_translate(d) )
+    {
+        rcu_unlock_domain(d);
+        return -EINVAL;
+    }
+
+    for ( i = *progress; i < op.nr_gpfns; i++ )
+    {
+        if ( hypercall_preempt_check() )
+        {
+            rcu_unlock_domain(d);
+            *progress = i;
+            return -EAGAIN;
+        }
+
+        if ( unlikely(__copy_from_guest_offset(&gpfn, op.gpfn_list, i, 1)) )
+        {
+            rcu_unlock_domain(d);
+            return -EFAULT;
+        }
+
+        page = get_page_from_gfn(d, gpfn, NULL, P2M_ALLOC);
+        if ( unlikely(!page) )
+        {
+            gdprintk(XENLOG_INFO, "Could not get page for gpfn %lx", gpfn);
+            rcu_unlock_domain(d);
+            return -EFAULT;
+        }
+
+        mfn = page_to_mfn(page);
+        if ( unlikely(!mfn_valid(_mfn(mfn))) )
+        {
+            gdprintk(XENLOG_INFO, "Could not translate gpfn %lx", gpfn);
+            put_page(page);
+            rcu_unlock_domain(d);
+            return -EFAULT;
+        }
+
+        if (test_and_set_bit(_PGC_pinned_by_tools, &page->count_info))
+        {
+            gdprintk(XENLOG_INFO, "Could not pin gpfn %lx - already pinned", gpfn);
+            put_page(page);
+            rcu_unlock_domain(d);
+            return -EFAULT;
+        }
+
+        if ( unlikely(__copy_to_guest_offset(op.mfn_list, i, &mfn, 1)) )
+        {
+            put_page(page);
+            rcu_unlock_domain(d);
+            return -EFAULT;
+        }
+
+        /* we hold the reference to page until release_mfn_list */
+    }
+
+    rcu_unlock_domain(d);
+    return 0;
+}
+
+static long release_mfn_list(
+    XEN_GUEST_HANDLE(xen_release_mfn_list_t) uop, unsigned long *progress)
+{
+    struct xen_release_mfn_list op;
+    unsigned long i;
+    xen_pfn_t mfn;
+    struct domain *d;
+    struct page_info *page;
+    int rc;
+
+    if ( copy_from_guest(&op, uop, 1) )
+        return -EFAULT;
+
+    /* Is size too large for us to encode a continuation? */
+    if ( op.nr_mfns > (ULONG_MAX >> MEMOP_EXTENT_SHIFT) )
+        return -EINVAL;
+
+    if ( !guest_handle_subrange_okay(op.mfn_list, *progress, op.nr_mfns-1) )
+        return -EFAULT;
+
+
+    d = rcu_lock_domain_by_any_id(op.domid);
+    if ( d == NULL )
+        return -ESRCH;
+
+    rc = xsm_memory_translate(XSM_PRIV, d);
+    if ( rc )
+    {
+        rcu_unlock_domain(d);
+        return rc;
+    }
+
+    if ( !paging_mode_translate(d) )
+    {
+        rcu_unlock_domain(d);
+        return -EINVAL;
+    }
+
+    for ( i = *progress; i < op.nr_mfns; i++ )
+    {
+        if ( hypercall_preempt_check() )
+        {
+            rcu_unlock_domain(d);
+            *progress = i;
+            return -EAGAIN;
+        }
+
+        if ( unlikely(__copy_from_guest_offset(&mfn, op.mfn_list, i, 1)) )
+        {
+            rcu_unlock_domain(d);
+            return -EFAULT;
+        }
+
+        page = mfn_to_page(mfn);
+        if (test_and_clear_bit(_PGC_pinned_by_tools, &page->count_info)) {
+            put_page(page);
+        }
+    }
+
+    rcu_unlock_domain(d);
+    return 0;
+}
+
 static long memory_exchange(XEN_GUEST_HANDLE_PARAM(xen_memory_exchange_t) arg)
 {
     struct xen_memory_exchange exch;
@@ -1156,6 +1312,7 @@ long do_memory_op(unsigned long cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
     struct memop_args args;
     domid_t domid;
     unsigned long start_extent = cmd >> MEMOP_EXTENT_SHIFT;
+    unsigned long progress;
     int op = cmd & MEMOP_CMD_MASK;
 
     switch ( op )
@@ -1606,6 +1763,27 @@ long do_memory_op(unsigned long cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
     case XENMEM_acquire_resource:
         rc = acquire_resource(
             guest_handle_cast(arg, xen_mem_acquire_resource_t));
+        break;
+
+    case XENMEM_translate_gpfn_list:
+        progress = cmd >> MEMOP_EXTENT_SHIFT;
+        rc = translate_gpfn_list(
+            guest_handle_cast(arg, xen_translate_gpfn_list_t),
+            &progress);
+        if ( rc == -EAGAIN )
+            return hypercall_create_continuation(
+                __HYPERVISOR_memory_op, "lh",
+                op | (progress << MEMOP_EXTENT_SHIFT), arg);
+        break;
+    case XENMEM_release_mfn_list:
+        progress = cmd >> MEMOP_EXTENT_SHIFT;
+        rc = release_mfn_list(
+                guest_handle_cast(arg, xen_release_mfn_list_t),
+                &progress);
+        if ( rc == -EAGAIN )
+            return hypercall_create_continuation(
+                    __HYPERVISOR_memory_op, "lh",
+                    op | (progress << MEMOP_EXTENT_SHIFT), arg);
         break;
 
     default:

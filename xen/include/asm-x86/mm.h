@@ -77,9 +77,12 @@
 #define PGC_state_offlined PG_mask(2, 9)
 #define PGC_state_free    PG_mask(3, 9)
 #define page_state_is(pg, st) (((pg)->count_info&PGC_state) == PGC_state_##st)
+ /* Pinned by dom0 tools */
+#define _PGC_pinned_by_tools	PG_shift(10)
+#define PGC_pinned_by_tools	PG_mask(1, 10)
 
  /* Count of references to this frame. */
-#define PGC_count_width   PG_shift(9)
+#define PGC_count_width   PG_shift(10)
 #define PGC_count_mask    ((1UL<<PGC_count_width)-1)
 
 /*

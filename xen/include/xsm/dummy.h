@@ -228,6 +228,12 @@ static XSM_INLINE int xsm_memory_stat_reservation(XSM_DEFAULT_ARG struct domain 
     return xsm_default_action(action, d1, d2);
 }
 
+static XSM_INLINE int xsm_memory_translate(XSM_DEFAULT_ARG struct domain *d)
+{
+    XSM_ASSERT_ACTION(XSM_PRIV);
+    return xsm_default_action(action, current->domain, d);
+}
+
 static XSM_INLINE int xsm_console_io(XSM_DEFAULT_ARG struct domain *d, int cmd)
 {
     XSM_ASSERT_ACTION(XSM_OTHER);
