@@ -52,6 +52,11 @@ endif
 
 ROMS := 
 
+ifneq ($(PXE_ROM),)
+ETHERBOOT_ROMS := $(PXE_ROM)
+ROMS += $(PXE_ROM)
+endif
+
 ifeq ($(CONFIG_ROMBIOS),y)
 OBJS += optionroms.o 32bitbios_support.o rombios.o
 CFLAGS += -DENABLE_ROMBIOS
