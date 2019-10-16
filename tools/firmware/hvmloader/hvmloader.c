@@ -133,11 +133,13 @@ static void init_hypercalls(void)
         *(uint32_t *)(signature + 8) = edx;
         signature[12] = '\0';
 
-        if ( !strcmp("XenVMMXenVMM", signature) )
+        if ( !strcmp("XenVMMXenVMM", signature) ||
+             !strcmp("XciVMMXciVMM", signature) )
             break;
     }
 
-    BUG_ON(strcmp("XenVMMXenVMM", signature) || ((eax - base) < 2));
+    BUG_ON((   strcmp("XenVMMXenVMM", signature)
+            && strcmp("XciVMMXciVMM", signature) )|| ((eax - base) < 2));
 
     /* Fill in hypercall transfer pages. */
     cpuid(base + 2, &eax, &ebx, &ecx, &edx);

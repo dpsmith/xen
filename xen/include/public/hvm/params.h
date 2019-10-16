@@ -288,6 +288,10 @@
 #define XEN_HVM_MCA_CAP_LMCE   (xen_mk_ullong(1) << 0)
 #define XEN_HVM_MCA_CAP_MASK   XEN_HVM_MCA_CAP_LMCE
 
-#define HVM_NR_PARAMS 39
+/* XenClient specific hvm params */
+/* use Xci cpuid signature instead of standard Xen one */
+#define HVM_PARAM_XCI_CPUID_SIGNATURE 39
+
+#define HVM_NR_PARAMS 40
 
 #endif /* __XEN_PUBLIC_HVM_PARAMS_H__ */

@@ -4162,6 +4162,10 @@ static int hvmop_set_param(
              !(a.value & HVMPV_base_freq) )
             rc = -EINVAL;
         break;
+    case HVM_PARAM_XCI_CPUID_SIGNATURE:
+        if ( a.value > 1 )
+            rc = -EINVAL;
+        break;
     case HVM_PARAM_IDENT_PT:
         /*
          * Only actually required for VT-x lacking unrestricted_guest

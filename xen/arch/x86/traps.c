@@ -862,10 +862,18 @@ void cpuid_hypervisor_leaves(const struct vcpu *v, uint32_t leaf,
     switch ( idx )
     {
     case 0:
-        res->a = base + limit; /* Largest leaf */
-        res->b = XEN_CPUID_SIGNATURE_EBX;
-        res->c = XEN_CPUID_SIGNATURE_ECX;
-        res->d = XEN_CPUID_SIGNATURE_EDX;
+        /* possibly use XenClient cpuid signature */
+        if (is_hvm_domain(d) && (d->arch.hvm.params[HVM_PARAM_XCI_CPUID_SIGNATURE])) {
+            res->a = base + limit; /* Largest leaf */
+            res->b = XCI_CPUID_SIGNATURE_EBX;
+            res->c = XCI_CPUID_SIGNATURE_ECX;
+            res->d = XCI_CPUID_SIGNATURE_EDX;
+        } else {
+            res->a = base + limit; /* Largest leaf */
+            res->b = XEN_CPUID_SIGNATURE_EBX;
+            res->c = XEN_CPUID_SIGNATURE_ECX;
+            res->d = XEN_CPUID_SIGNATURE_EDX;
+        }
         break;
 
     case 1:

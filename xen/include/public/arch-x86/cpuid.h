@@ -42,6 +42,11 @@
 #define XEN_CPUID_FIRST_LEAF 0x40000000
 #define XEN_CPUID_LEAF(i)    (XEN_CPUID_FIRST_LEAF + (i))
 
+/* alternate XenClient cpuid signature */
+#define XCI_CPUID_SIGNATURE_EBX 0x56696358 /* "XciV" */
+#define XCI_CPUID_SIGNATURE_ECX 0x63584d4d /* "MMXc" */
+#define XCI_CPUID_SIGNATURE_EDX 0x4d4d5669 /* "iVMM" */
+
 /*
  * Leaf 1 (0x40000x00)
  * EAX: Largest Xen-information leaf. All leaves up to an including @EAX
