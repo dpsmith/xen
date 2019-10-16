@@ -2672,8 +2672,36 @@ int allocate_and_map_msi_pirq(struct domain *d, int index, int *pirq_p,
         irq = index;
         if ( irq == -1 )
         {
-    case MAP_PIRQ_TYPE_MULTI_MSI:
             irq = create_irq(NUMA_NO_NODE);
+            /* Allow stubdomain to deal with this IRQ. */
+            if ( d == current->domain->target )
+            {
+                ret = irq_permit_access(current->domain, irq);
+                if ( ret )
+                    printk(XENLOG_G_ERR "Could not grant stubdom%u access to IRQ%d (error %d)\n",
+                           current->domain->domain_id, irq, ret);
+            }
+	}
+
+        if ( irq < nr_irqs_gsi || irq >= nr_irqs )
+        {
+            dprintk(XENLOG_G_ERR, "dom%d: can't create irq for msi!\n",
+                    d->domain_id);
+            return -EINVAL;
+        }
+
+        msi->irq = irq;
+        break;
+    case MAP_PIRQ_TYPE_MULTI_MSI:
+        irq = create_irq(NUMA_NO_NODE);
+        /* Allow stubdomain to deal with this IRQ. */
+        if ( d == current->domain->target )
+        {
+            ret = irq_permit_access(current->domain, irq);
+            if ( ret )
+                printk(XENLOG_G_ERR "Could not grant stubdom%u access to IRQ%d (error %d)\n",
+                       current->domain->domain_id, irq, ret);
+
         }
 
         if ( irq < nr_irqs_gsi || irq >= nr_irqs )
@@ -2716,8 +2744,20 @@ int allocate_and_map_msi_pirq(struct domain *d, int index, int *pirq_p,
         {
         case MAP_PIRQ_TYPE_MSI:
             if ( index == -1 )
+            {
+                if ( (d == current->domain->target) &&
+                     irq_deny_access(current->domain, irq) )
+                    printk(XENLOG_G_ERR "dom%d: could not revoke access to IRQ%d.\n",
+                           d->domain_id, irq );
+		destroy_irq(irq);
+            }
+            break;
         case MAP_PIRQ_TYPE_MULTI_MSI:
-                destroy_irq(irq);
+            destroy_irq(irq);
+            if ( (d == current->domain->target) &&
+                  irq_deny_access(current->domain, irq) )
+                printk(XENLOG_G_ERR "dom%d: could not revoke access to IRQ%d.\n",
+                       d->domain_id, irq );
             break;
         }
     }

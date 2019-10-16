@@ -164,6 +164,18 @@ int physdev_unmap_pirq(domid_t domid, int pirq)
 
     pcidevs_lock();
     spin_lock(&d->event_lock);
+    /* Remove stubdomain's permission on IRQ. */
+    if (d == current->domain->target)
+    {
+        int irq;
+
+        irq = domain_pirq_to_irq(d, pirq);
+        if ( irq <= 0 )
+            printk(XENLOG_G_ERR "dom%d invalid pirq:%d!\n", d->domain_id, pirq);
+        else if ( irq_deny_access(current->domain, irq) )
+            printk(XENLOG_G_ERR "Could not revoke stubdom%u access to IRQ%d.\n",
+                        current->domain->domain_id, irq);
+    }
     ret = unmap_domain_pirq(d, pirq);
     spin_unlock(&d->event_lock);
     pcidevs_unlock();
