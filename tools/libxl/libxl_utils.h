@@ -41,6 +41,8 @@ int libxl_is_stubdom(libxl_ctx *ctx, uint32_t domid, uint32_t *target_domid);
 int libxl_create_logfile(libxl_ctx *ctx, const char *name, char **full_name);
 int libxl_string_to_backend(libxl_ctx *ctx, char *s, libxl_disk_backend *backend);
 int libxl_update_state(libxl_ctx *ctx, uint32_t domid_in, const char *state);
+int libxl_read_reboot(libxl_ctx *ctx, uint32_t domid_in, char **reboot);
+int libxl_set_reboot(libxl_ctx *ctx, uint32_t domid_in, bool reboot);
 int libxl_update_state_direct(libxl_ctx *ctx, libxl_uuid xl_uuid, const char *state);
 
 int libxl_read_file_contents(libxl_ctx *ctx, const char *filename,

@@ -115,12 +115,13 @@ static void reboot_domain(uint32_t domid, libxl_evgen_domain_death **deathw,
 
     fprintf(stderr, "Rebooting domain %u\n", domid);
     libxl_update_state(ctx, domid, "rebooting");
+    libxl_set_reboot(ctx, domid, 1);
     rc=libxl_domain_reboot(ctx, domid);
     if (rc == ERROR_NOPARAVIRT) {
         if (fallback_trigger) {
             fprintf(stderr, "PV control interface not available:"
                     " sending ACPI reset button event.\n");
-            rc = libxl_send_trigger(ctx, domid, LIBXL_TRIGGER_RESET, 0);
+            rc = libxl_send_trigger(ctx, domid, LIBXL_TRIGGER_POWER, 0);
         } else {
             fprintf(stderr, "PV control interface not available:"
                     " external graceful reboot not possible.\n");
@@ -479,10 +480,20 @@ static domain_restart_type handle_domain_death(uint32_t *r_domid,
 {
     domain_restart_type restart = DOMAIN_RESTART_NONE;
     libxl_action_on_shutdown action;
+    char * reboot = NULL;
 
     switch (event->u.domain_shutdown.shutdown_reason) {
     case LIBXL_SHUTDOWN_REASON_POWEROFF:
-        action = d_config->on_poweroff;
+        libxl_read_reboot(ctx, *r_domid, &reboot);
+        if ((reboot) && (strncmp(reboot, "1", 2) == 0))
+        {
+            LOG("Setting domain action to reboot");
+            action = d_config->on_reboot;
+            libxl_update_state(ctx, *r_domid, "rebooting");
+        } else {
+            action = d_config->on_poweroff;
+            libxl_update_state(ctx, *r_domid, "shutdowning");
+        }
         break;
     case LIBXL_SHUTDOWN_REASON_REBOOT:
         action = d_config->on_reboot;
@@ -540,6 +551,7 @@ static domain_restart_type handle_domain_death(uint32_t *r_domid,
     case LIBXL_ACTION_ON_SHUTDOWN_RESTART:
         reload_domain_config(*r_domid, d_config);
         restart = DOMAIN_RESTART_NORMAL;
+        libxl_set_reboot(ctx, *r_domid, 0);
         /* fall-through */
     case LIBXL_ACTION_ON_SHUTDOWN_DESTROY:
         LOG("Domain %d needs to be cleaned up: destroying the domain",

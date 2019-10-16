@@ -1268,6 +1268,40 @@ int libxl_domid_valid_guest(uint32_t domid)
     return domid > 0 && domid < DOMID_FIRST_RESERVED;
 }
 
+int libxl_read_reboot(libxl_ctx *ctx, uint32_t domid, char **state)
+{
+    char path[sizeof("/state/00000000-0000-0000-0000-000000000000/reboot")];
+    char uuid[37];
+    libxl_dominfo domain;
+
+    libxl_domain_info(ctx, &domain, domid);
+
+    uuid_unparse(domain.uuid.uuid, uuid);
+    sprintf(path, "/state/%s/reboot", uuid);
+
+    *state = xs_read(ctx->xsh, XBT_NULL, path, NULL);
+
+    return 0;
+}
+
+int libxl_set_reboot(libxl_ctx *ctx, uint32_t domid, bool reboot)
+{
+    char path[sizeof("/state/00000000-0000-0000-0000-000000000000/reboot")];
+    char uuid[37];
+    libxl_dominfo domain;
+
+    libxl_domain_info(ctx, &domain, domid);
+    uuid_unparse(domain.uuid.uuid, uuid);
+
+    sprintf(path, "/state/%s/reboot", uuid);
+    if (reboot)
+        xs_write(ctx->xsh, XBT_NULL, path, "1", strlen("1"));
+    else
+        xs_rm(ctx->xsh, XBT_NULL, path);
+
+    return 0;
+}
+
 int libxl_update_state_direct(libxl_ctx *ctx, libxl_uuid xl_uuid, const char * state)
 {
     char path[sizeof("/state/00000000-0000-0000-0000-000000000000/state")];
