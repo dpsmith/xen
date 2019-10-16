@@ -161,12 +161,35 @@ int libxl__domain_build_info_setdefault(libxl__gc *gc,
     }
 
     if (b_info->type == LIBXL_DOMAIN_TYPE_HVM &&
-        b_info->device_model_version !=
-            LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL &&
         libxl_defbool_val(b_info->device_model_stubdomain)) {
-        LOG(ERROR,
-            "device model stubdomains require \"qemu-xen-traditional\"");
-        return ERROR_INVAL;
+        if (!b_info->stubdomain_version) {
+            switch (b_info->device_model_version) {
+            case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                b_info->stubdomain_version = LIBXL_STUBDOMAIN_VERSION_MINIOS;
+                break;
+            case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                b_info->stubdomain_version = LIBXL_STUBDOMAIN_VERSION_LINUX;
+                break;
+            default: abort();
+            }
+        }
+
+        switch (b_info->device_model_version) {
+        case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+            if (b_info->stubdomain_version != LIBXL_STUBDOMAIN_VERSION_MINIOS) {
+                LOG(ERROR,
+                  "\"qemu-xen-traditional\" requires \"minios\" as stubdomain");
+                return ERROR_INVAL;
+            }
+            break;
+        case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+            if (b_info->stubdomain_version != LIBXL_STUBDOMAIN_VERSION_LINUX) {
+                LOG(ERROR, "\"qemu-xen\" requires \"linux\" as stubdomain");
+                return ERROR_INVAL;
+            }
+            break;
+        default: abort();
+        }
     }
 
     if (!b_info->max_vcpus)

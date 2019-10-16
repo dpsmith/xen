@@ -108,6 +108,12 @@ libxl_device_model_version = Enumeration("device_model_version", [
     (2, "QEMU_XEN"),             # Upstream based qemu-xen device model
     ])
 
+# Give the kernel running in the stub-domain
+libxl_stubdomain_version = Enumeration("stubdomain_version", [
+    (1, "MINIOS"),
+    (2, "LINUX"),
+    ])
+
 libxl_console_type = Enumeration("console_type", [
     (0, "UNKNOWN"),
     (1, "SERIAL"),
@@ -498,6 +504,7 @@ libxl_domain_build_info = Struct("domain_build_info",[
     
     ("device_model_version", libxl_device_model_version),
     ("device_model_stubdomain", libxl_defbool),
+    ("stubdomain_version", libxl_stubdomain_version),
     # if you set device_model you must set device_model_version too
     ("device_model",     string),
     ("device_model_ssidref", uint32),
