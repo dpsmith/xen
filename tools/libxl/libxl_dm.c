@@ -2454,6 +2454,39 @@ out:
     stubdom_pvqemu_cb(egc, &sdss->multidev, rc);
 }
 
+static void stub_dm_watch_event(libxl__egc *egc, libxl__xswait_state *xswa,
+                                int rc, const char *p)
+{
+    EGC_GC;
+    libxl__spawn_state *spawn = CONTAINER_OF(xswa, libxl__spawn_state, xswait);
+    libxl__dm_spawn_state *pvqemu =
+        CONTAINER_OF(spawn, libxl__dm_spawn_state, spawn);
+    libxl__stub_dm_spawn_state *sdss =
+        CONTAINER_OF(pvqemu, libxl__stub_dm_spawn_state, pvqemu);
+    uint32_t dm_domid = sdss->pvqemu.guest_domid;
+
+    if (rc) {
+        if (rc == ERROR_TIMEDOUT)
+           LIBXL__LOG(CTX, XTL_DEBUG, "%s: startup timed out", xswa->what);
+        if (dm_domid) {
+            sdss->dis.ao = sdss->dm.spawn.ao;
+            sdss->dis.domid = dm_domid;
+            sdss->dis.callback = spaw_stubdom_pvqemu_destroy_cb;
+            libxl__destroy_domid(egc, &sdss->dis);
+        }
+       return;
+    }
+
+    if (!p)
+        return;
+
+    if (strcmp(p, "running"))
+        return;
+
+    libxl__xswait_stop(gc, xswa);
+    sdss->callback(egc, &sdss->dm, rc);
+}
+
 static void stubdom_pvqemu_cb(libxl__egc *egc,
                               libxl__multidev *multidev,
                               int rc)
@@ -2461,6 +2494,7 @@ static void stubdom_pvqemu_cb(libxl__egc *egc,
     libxl__stub_dm_spawn_state *sdss = CONTAINER_OF(multidev, *sdss, multidev);
     STATE_AO_GC(sdss->dm.spawn.ao);
     uint32_t dm_domid = sdss->pvqemu.guest_domid;
+    libxl__xswait_state *xswait = &sdss->pvqemu.spawn.xswait;
 
     libxl__xswait_init(&sdss->xswait);
 
@@ -2469,6 +2503,17 @@ static void stubdom_pvqemu_cb(libxl__egc *egc,
               "error connecting nics devices");
         goto out;
     }
+
+    /* wait for PV stubdom QEMU instance to be ready */
+    libxl__xswait_init(xswait);
+    xswait->ao = sdss->dm.spawn.ao;
+    xswait->what = GCSPRINTF("stub domain %d startup", dm_domid);
+    xswait->path = GCSPRINTF("/local/domain/0/device-model/%d/state",
+                             sdss->dm.guest_domid);
+    xswait->timeout_ms = LIBXL_DEVICE_MODEL_START_TIMEOUT * 1000;
+    xswait->callback = stub_dm_watch_event;
+    rc = libxl__xswait_start(gc, xswait);
+    if (rc) goto out;
 
     rc = libxl_domain_unpause(CTX, dm_domid);
     if (rc) goto out;
