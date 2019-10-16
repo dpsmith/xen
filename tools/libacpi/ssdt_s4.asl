@@ -19,8 +19,8 @@ DefinitionBlock ("SSDT_S4.aml", "SSDT", 2, "Xen", "HVM", 0)
     /* Must match piix emulation */
     Name (\_S4, Package (0x04)
     {
-        0x00,  /* PM1a_CNT.SLP_TYP */
-        0x00,  /* PM1b_CNT.SLP_TYP */
+        0x06,  /* PM1a_CNT.SLP_TYP */
+        0x06,  /* PM1b_CNT.SLP_TYP */
         0x00,  /* reserved */
         0x00   /* reserved */
     })
