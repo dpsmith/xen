@@ -36,6 +36,7 @@
 #define GBL_STS    (1 << 5)
 #define PWRBTN_STS (1 << 8)
 #define SLPBTN_STS (1 << 9)
+#define WAK_STS    (1 << 15)
 
 /* The same in PM1a_EN */
 #define TMR_EN     (1 << 0)
@@ -91,6 +92,25 @@ void hvm_acpi_sleep_button(struct domain *d)
     pmt_update_sci(s);
     spin_unlock(&s->lock);
 }
+
+/* Set power button status (necessary for proper win32 resume) */
+void hvm_acpi_power_button_set_sts(struct domain *d)
+{
+    PMTState *s = &d->arch.hvm.pl_time->vpmt;
+    spin_lock(&s->lock);
+    d->arch.hvm.acpi.pm1a_sts |= PWRBTN_STS;
+    spin_unlock(&s->lock);
+}
+
+/* Set rsm/wak_sts bit */
+void hvm_acpi_set_wak_sts(struct domain *d)
+{
+    PMTState *s = &d->arch.hvm.pl_time->vpmt;
+    spin_lock(&s->lock);
+    d->arch.hvm.acpi.pm1a_sts |= WAK_STS;
+    spin_unlock(&s->lock);
+}
+
 
 /* Set the correct value in the timer, accounting for time elapsed
  * since the last time we did that. */

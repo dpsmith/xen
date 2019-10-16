@@ -3952,6 +3952,9 @@ static void hvm_s3_suspend(struct domain *d)
     domain_unlock(d);
 }
 
+extern void hvm_acpi_power_button_set_sts(struct domain *d);
+extern void hvm_acpi_set_wak_sts(struct domain *d);
+
 static void hvm_s3_resume(struct domain *d)
 {
     if ( test_and_clear_bool(d->arch.hvm.is_s3_suspended) )
@@ -3960,6 +3963,10 @@ static void hvm_s3_resume(struct domain *d)
 
         for_each_vcpu( d, v )
             hvm_set_guest_tsc(v, 0);
+        /* Set the power button status bit in pm1 status register */
+        hvm_acpi_power_button_set_sts(d);
+        /* WAK_STS as well */
+        hvm_acpi_set_wak_sts(d);
         domain_unpause(d);
     }
 }
