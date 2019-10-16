@@ -2312,6 +2312,11 @@ void libxl__spawn_stub_dm(libxl__egc *egc, libxl__stub_dm_spawn_state *sdss)
                                    libxl__xs_get_dompath(gc, guest_domid)),
                         "%s",
                         libxl_bios_type_to_string(guest_config->b_info.u.hvm.bios));
+        /* OpenXT: We use legacy roms, which is disabled by default in sebios */
+        libxl__xs_printf(gc, XBT_NULL,
+                        libxl__sprintf(gc, "%s/hvmloader/seabios-legacy-load-roms",
+                                       libxl__xs_get_dompath(gc, guest_domid)),
+                        "1");
     }
     ret = xc_domain_set_target(ctx->xch, dm_domid, guest_domid);
     if (ret<0) {
@@ -2336,6 +2341,12 @@ retry_transaction:
         if (errno == EAGAIN)
             goto retry_transaction;
 
+    /* OpenXT: We add the device models extended power management type to enable acpi.
+     * We do this here since we need the permission above.
+     */
+    libxl__xs_printf(gc, XBT_NULL,
+                     DEVICE_MODEL_XS_PATH(gc, dm_domid, guest_domid, "/xen_extended_power_mgmt"), "2");
+
     libxl__multidev_begin(ao, &sdss->multidev);
     sdss->multidev.callback = spawn_stub_launch_dm;
     /* OpenXT: Again, no disk for the stubdom itself */
@@ -2354,7 +2365,6 @@ static void spawn_stub_launch_dm(libxl__egc *egc,
 {
     libxl__stub_dm_spawn_state *sdss = CONTAINER_OF(multidev, *sdss, multidev);
     STATE_AO_GC(sdss->dm.spawn.ao);
-    libxl_ctx *ctx = libxl__gc_owner(gc);
     int i, num_console = STUBDOM_SPECIAL_CONSOLES;
     libxl__device_console *console;
 
@@ -2404,21 +2414,16 @@ static void spawn_stub_launch_dm(libxl__egc *egc,
 
     for (i = 0; i < num_console; i++) {
         console[i].devid = i;
-        console[i].consback = LIBXL__CONSOLE_BACKEND_IOEMU;
+        /* OpenXT: our console backend is xenconsoled */
+        console[i].consback = LIBXL__CONSOLE_BACKEND_XENCONSOLED;
         /* STUBDOM_CONSOLE_LOGGING (console 0) is for minios logging
          * STUBDOM_CONSOLE_SAVE (console 1) is for writing the save file
          * STUBDOM_CONSOLE_RESTORE (console 2) is for reading the save file
          */
         switch (i) {
-            char *filename;
-            char *name;
+            /* OpenXT: we don't log to a file but to a pty */
             case STUBDOM_CONSOLE_LOGGING:
-                name = GCSPRINTF("qemu-dm-%s",
-                                 libxl_domid_to_name(ctx, guest_domid));
-                ret = libxl_create_logfile(ctx, name, &filename);
-                if (ret) goto out;
-                console[i].output = GCSPRINTF("file:%s", filename);
-                free(filename);
+                console[i].output = "pty";
                 /* will be changed back to LIBXL__CONSOLE_BACKEND_IOEMU if qemu
                  * will be in use */
                 console[i].consback = LIBXL__CONSOLE_BACKEND_XENCONSOLED;
@@ -2653,6 +2658,17 @@ void libxl__spawn_local_dm(libxl__egc *egc, libxl__dm_spawn_state *dmss)
                          b_info->device_model_version==LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL &&
                          !libxl__vnuma_configured(b_info));
         free(path);
+        /* OpenXT: We use legacy roms, which is disabled by default in sebios */
+        libxl__xs_printf(gc, XBT_NULL,
+                         libxl__sprintf(gc, "%s/hvmloader/seabios-legacy-load-roms",
+                                       libxl__xs_get_dompath(gc, domid)),
+                        "1");
+        /* OpenXT: We add the device models extended power management type to enable acpi.
+         * We do this here since we need the permission above.
+         */
+        libxl__xs_printf(gc, XBT_NULL,
+                         DEVICE_MODEL_XS_PATH(gc, 0, domid, "/xen_extended_power_mgmt"), "2");
+
     }
 
     path = DEVICE_MODEL_XS_PATH(gc, LIBXL_TOOLSTACK_DOMID, domid, "");

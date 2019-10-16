@@ -609,7 +609,8 @@ int libxl_domain_unpause(libxl_ctx *ctx, uint32_t domid)
         if (rc < 0) {
             LOGD(ERROR, domid,
                  "Failed to unpause device model for domain: %d", rc);
-            goto out;
+                /* OpenXT: This is not fatal, xc_domain_unpause() is enough */
+                /* goto out; */
         }
     }
     ret = xc_domain_unpause(ctx->xch, domid);
