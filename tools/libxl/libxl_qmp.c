@@ -1301,7 +1301,7 @@ int libxl__qmp_initializations(libxl__gc *gc, uint32_t domid,
         ret = qmp_change(gc, qmp, "vnc", "password", vnc->passwd);
         qmp_write_domain_console_item(gc, domid, "vnc-pass", vnc->passwd);
     }
-    if (!ret) {
+    if (!ret && vnc) {
         ret = qmp_query_vnc(qmp);
     }
     libxl__qmp_close(qmp);
