@@ -272,6 +272,9 @@ int compat_grant_table_op(unsigned int cmd,
             break;
 
         case GNTTABOP_get_status_frames: {
+#ifndef CONFIG_GRANT_TABLE_V2
+            rc = -ENOSYS;
+#else
             unsigned int max_frame_list_size_in_pages =
                 (COMPAT_ARG_XLAT_SIZE - sizeof(*nat.get_status)) /
                 sizeof(*nat.get_status->frame_list.p);
@@ -319,6 +322,7 @@ int compat_grant_table_op(unsigned int cmd,
                 else
                     i = 1;
             }
+#endif
             break;
         }
 

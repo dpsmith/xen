@@ -22,6 +22,24 @@ config GRANT_TABLE
 
 	  If unsure, say Y.
 
+config GRANT_TABLE_V2
+	bool "Grant table version 2 support" if EXPERT = "y"
+	depends on GRANT_TABLE && X86
+	---help---
+	  Grant table interface version 2 is not the default. It has never
+	  been implemented for ARM.
+
+	  The version 2 interface enables support for systems with large amounts
+	  of memory and some exotic grant primitives that are not in use by the
+	  supported PV drivers.
+
+	  Disabling this option reduces the amount of complex security-critical
+	  hypervisor code in a subsystem of Xen responsible for approximately
+	  5% of Xen Security Advisories.
+
+	  If you do not require large memory support, say N.
+	  If you are paranoid, say N. If unsure, say Y.
+
 config HAS_ALTERNATIVE
 	bool
 
