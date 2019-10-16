@@ -181,13 +181,7 @@ static uint32_t base_disallow_mask;
 
 #define L4_DISALLOW_MASK (base_disallow_mask)
 
-#define l1_disallow_mask(d)                                     \
-    ((d != dom_io) &&                                           \
-     (rangeset_is_empty((d)->iomem_caps) &&                     \
-      rangeset_is_empty((d)->arch.ioport_caps) &&               \
-      !has_arch_pdevs(d) &&                                     \
-      is_pv_domain(d)) ?                                        \
-     L1_DISALLOW_MASK : (L1_DISALLOW_MASK & ~PAGE_CACHE_ATTRS))
+#define l1_disallow_mask(d) (L1_DISALLOW_MASK & ~PAGE_CACHE_ATTRS)
 
 static s8 __read_mostly opt_mmio_relax;
 
