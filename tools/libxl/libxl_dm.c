@@ -1168,17 +1168,15 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                       "-xen-domid",
                       GCSPRINTF("%d", guest_domid), NULL);
 
-    /* There is currently no way to access the QMP socket in the stubdom */
     if (!is_stubdom) {
-        flexarray_append(dm_args, "-chardev");
+        flexarray_append(dm_args, "-qmp");
         flexarray_append(dm_args,
-                         GCSPRINTF("socket,id=libxl-cmd,"
-                                        "path=%s/qmp-libxl-%d,server,nowait",
+                         GCSPRINTF("unix:%s/qmp-libxl-%d,server,nowait",
                                         libxl__run_dir_path(), guest_domid));
-
-        flexarray_append(dm_args, "-no-shutdown");
-        flexarray_append(dm_args, "-mon");
-        flexarray_append(dm_args, "chardev=libxl-cmd,mode=control");
+    } else {
+        /* OpenXT: We have Argo qmp, proxied by the qmp_helper */
+        flexarray_append_pair(dm_args, "-qmp", "argo");
+        need_qmp_helper=true;
     }
 
     for (i = 0; i < guest_config->num_channels; i++) {
@@ -1220,7 +1218,7 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
     }
 
     if (c_info->name) {
-        flexarray_vappend(dm_args, "-name", c_info->name, NULL);
+        flexarray_vappend(dm_args, "-name", GCSPRINTF("qemu-%d.0", guest_domid), NULL);
     }
 
     if (vnc && !is_stubdom) {
@@ -1262,17 +1260,12 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         }
 
         flexarray_append(dm_args, vncarg);
-    } else
-        /*
-         * Ensure that by default no vnc server is created.
-         */
-        flexarray_append_pair(dm_args, "-vnc", "none");
+    } /* OpenXT: no else here, we don't support "-vnc none" */
 
     /*
-     * Ensure that by default no display backend is created. Further
-     * options given below might then enable more.
+     * OpenXT: the default display backend is Surfman
      */
-    flexarray_append_pair(dm_args, "-display", "none");
+    flexarray_append_pair(dm_args, "-display", "surfman");
 
     if (sdl && !is_stubdom) {
         flexarray_append(dm_args, "-sdl");
@@ -1343,6 +1336,9 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
 
         if (libxl_defbool_val(b_info->u.hvm.nographic) && (!sdl && !vnc)) {
             flexarray_append(dm_args, "-nographic");
+        } else {
+            /* OpenXT: only add mouse if graphical */
+            flexarray_append_pair(dm_args, "-device", "xenmou");
         }
 
         if (libxl_defbool_val(b_info->u.hvm.spice.enable) && !is_stubdom) {
@@ -1455,6 +1451,9 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         }
         if (!libxl__acpi_defbool_val(b_info)) {
             flexarray_append(dm_args, "-no-acpi");
+        } else {
+            /* OpenXT: Not just acpi, but xen-acpi */
+            flexarray_append(dm_args, "-xen-acpi-pm");
         }
         if (b_info->max_vcpus > 1) {
             flexarray_append(dm_args, "-smp");
@@ -1480,7 +1479,7 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                                                 LIBXL_NIC_TYPE_VIF_IOEMU);
                 flexarray_append(dm_args, "-device");
                 flexarray_append(dm_args,
-                   GCSPRINTF("%s,id=nic%d,netdev=net%d,mac=%s",
+                   GCSPRINTF("%s,id=vif%d,netdev=net%d,mac=%s",
                              nics[i].model, nics[i].devid,
                              nics[i].devid, smac));
                 flexarray_append(dm_args, "-netdev");
@@ -1631,11 +1630,9 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
 #undef APPEND_COLO_SOCK_CLIENT
             }
         }
-        /* If we have no emulated nics, tell qemu not to create any */
-        if ( ioemu_nics == 0 ) {
-            flexarray_append(dm_args, "-net");
-            flexarray_append(dm_args, "none");
-        }
+
+        /* OpenXT: We don't support -net none, adding nothing if there's 0 nic */
+
     } else {
         if (!sdl && !vnc) {
             flexarray_append(dm_args, "-nographic");

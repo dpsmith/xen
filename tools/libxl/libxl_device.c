@@ -470,6 +470,7 @@ const char *libxl__qemu_disk_format_string(libxl_disk_format format)
     case LIBXL_DISK_FORMAT_QED: return "qed";
     case LIBXL_DISK_FORMAT_HOST_CDROM: return "host_cdrom";
     case LIBXL_DISK_FORMAT_HOST_DEVICE: return "host_device";
+    case LIBXL_DISK_FORMAT_FILE: return "file";
     default: return NULL;
     }
 }

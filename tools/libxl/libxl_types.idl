@@ -131,6 +131,7 @@ libxl_disk_format = Enumeration("disk_format", [
     (6, "QED"),
     (7, "HOST_CDROM"),
     (8, "HOST_DEVICE"),
+    (9, "FILE"),
     ])
 
 libxl_disk_backend = Enumeration("disk_backend", [
