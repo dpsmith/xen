@@ -469,7 +469,14 @@ static int wakeup_secondary_cpu(int phys_apicid, unsigned long start_eip)
          * While AP is in root mode handling the INIT the CPU will drop
          * any SIPIs
          */
-        udelay(10);
+        /*
+         * Increase the wait time time because 10 us was simply not long enough
+         * for the VMEXIT, setting Wait-for-SIPI mode and VMRESUMING the APs.
+         * Some number of APs on some systems would just not be ready in time.
+         * See:
+         * https://openxt.atlassian.net/browse/OXT-747
+         */
+        udelay(10000);
     }
 
     maxlvt = get_maxlvt();
