@@ -158,11 +158,14 @@ static int libxl__device_pci_add_xenstore(libxl__gc *gc, uint32_t domid, libxl_d
         goto out;
     }
 
-    rc = libxl__get_domain_configuration(gc, domid, &d_config);
-    if (rc) goto out;
+    /* Stubdoms don't have a configuration file */
+    if (!libxl_is_stubdom(CTX, domid, NULL)) {
+        rc = libxl__get_domain_configuration(gc, domid, &d_config);
+        if (rc) goto out;
 
-    device_add_domain_config(gc, &d_config, &libxl__pcidev_devtype,
-                             &pcidev_saved);
+        device_add_domain_config(gc, &d_config, &libxl__pcidev_devtype,
+                                 &pcidev_saved);
+    }
 
     rc = libxl__dm_check_start(gc, &d_config, domid);
     if (rc) goto out;
@@ -171,8 +174,11 @@ static int libxl__device_pci_add_xenstore(libxl__gc *gc, uint32_t domid, libxl_d
         rc = libxl__xs_transaction_start(gc, &t);
         if (rc) goto out;
 
-        rc = libxl__set_domain_configuration(gc, domid, &d_config);
-        if (rc) goto out;
+        /* Stubdoms don't have a configuration file */
+        if (!libxl_is_stubdom(CTX, domid, NULL)) {
+            rc = libxl__set_domain_configuration(gc, domid, &d_config);
+            if (rc) goto out;
+        }
 
         libxl__xs_writev(gc, t, be_path, libxl__xs_kvs_of_flexarray(gc, back));
 
@@ -1241,10 +1247,23 @@ int libxl__device_pci_add(libxl__gc *gc, uint32_t domid, libxl_device_pci *pcide
     stubdomid = libxl_get_stubdom_id(ctx, domid);
     if (stubdomid != 0) {
         libxl_device_pci pcidev_s = *pcidev;
+        char *num_devs, *be_path;
+        int num;
+
         /* stubdomain is always running by now, even at create time */
         rc = do_pci_add(gc, stubdomid, &pcidev_s, 0);
+
         if ( rc )
             goto out;
+
+        /* Wait for the device to be ready before moving on */
+        be_path = libxl__sprintf(gc, "%s/backend/pci/%d/0", libxl__xs_get_dompath(gc, 0), stubdomid);
+        num_devs = libxl__xs_read(gc, XBT_NULL, libxl__sprintf(gc, "%s/num_devs", be_path));
+        if (num_devs) {
+            num = atoi(num_devs) - 1;
+            libxl__wait_for_backend_device(gc, be_path, num, GCSPRINTF("%d", XenbusStateInitialised));
+            /* TODO: set the state to XenbusStateConnected? */
+        }
     }
 
     orig_vdev = pcidev->vdevfn & ~7U;

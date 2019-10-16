@@ -2117,6 +2117,32 @@ void libxl__device_list_free(const struct libxl_device_type *dt,
     free(list);
 }
 
+int libxl__wait_for_backend_device(libxl__gc *gc, const char *be_path,
+                                       int id, const char *state)
+{
+    int watchdog = 100;
+    const char *p, *path = GCSPRINTF("%s/state-%d", be_path, id);
+    int rc;
+
+    while (watchdog-- > 0) {
+        rc = libxl__xs_read_checked(gc, XBT_NULL, path, &p);
+        if (rc) return rc;
+
+        if (p == NULL) {
+            LOG(ERROR, "Backend %s does not exist", be_path);
+            return ERROR_FAIL;
+        }
+
+        usleep(100000);
+
+        if (!strcmp(p, state))
+            return 0;
+    }
+
+    LOG(ERROR, "Backend %s not ready", be_path);
+    return ERROR_FAIL;
+}
+
 /*
  * Local variables:
  * mode: C

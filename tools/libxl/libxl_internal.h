@@ -1374,6 +1374,8 @@ _hidden int libxl__parse_backend_path(libxl__gc *gc, const char *path,
 _hidden int libxl__device_destroy(libxl__gc *gc, libxl__device *dev);
 _hidden int libxl__wait_for_backend(libxl__gc *gc, const char *be_path,
                                     const char *state);
+_hidden int libxl__wait_for_backend_device(libxl__gc *gc, const char *be_path,
+                                       int id, const char *state);
 _hidden int libxl__nic_type(libxl__gc *gc, libxl__device *dev,
                             libxl_nic_type *nictype);
 _hidden int libxl__init_console_from_channel(libxl__gc *gc,
