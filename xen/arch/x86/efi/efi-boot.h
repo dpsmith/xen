@@ -725,10 +725,8 @@ static void __init efi_arch_handle_cmdline(CHAR16 *image_name,
     {
         name.w = image_name;
         w2s(&name);
+        place_string(&mbi.cmdline, name.s);
     }
-    else
-        name.s = "xen";
-    place_string(&mbi.cmdline, name.s);
 
     if ( mbi.cmdline )
         mbi.flags |= MBI_CMDLINE;
