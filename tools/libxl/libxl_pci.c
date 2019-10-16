@@ -215,7 +215,7 @@ static int libxl__device_pci_remove_xenstore(libxl__gc *gc, uint32_t domid, libx
         return ERROR_FAIL;
 
     if (domtype == LIBXL_DOMAIN_TYPE_PV) {
-        if (libxl__wait_for_backend(gc, be_path, GCSPRINTF("%d", XenbusStateConnected)) < 0) {
+        if (libxl__wait_for_backend(gc, be_path, GCSPRINTF("%d", XenbusStateClosed)) < 0) {
             LOGD(DEBUG, domid, "pci backend at %s is not ready", be_path);
             return ERROR_FAIL;
         }
@@ -238,13 +238,12 @@ static int libxl__device_pci_remove_xenstore(libxl__gc *gc, uint32_t domid, libx
 retry_transaction:
     t = xs_transaction_start(ctx->xsh);
     xs_write(ctx->xsh, t, GCSPRINTF("%s/state-%d", be_path, i), GCSPRINTF("%d", XenbusStateClosing), 1);
-    xs_write(ctx->xsh, t, GCSPRINTF("%s/state", be_path), GCSPRINTF("%d", XenbusStateReconfiguring), 1);
     if (!xs_transaction_end(ctx->xsh, t, 0))
         if (errno == EAGAIN)
             goto retry_transaction;
 
     if (domtype == LIBXL_DOMAIN_TYPE_PV) {
-        if (libxl__wait_for_backend(gc, be_path, GCSPRINTF("%d", XenbusStateConnected)) < 0) {
+        if (libxl__wait_for_backend(gc, be_path, GCSPRINTF("%d", XenbusStateClosed)) < 0) {
             LOGD(DEBUG, domid, "pci backend at %s is not ready", be_path);
             return ERROR_FAIL;
         }
@@ -1119,13 +1118,13 @@ out:
     return rc;
 }
 
-static int libxl__device_pci_reset(libxl__gc *gc, unsigned int domain, unsigned int bus,
+int libxl__device_pci_reset(libxl__gc *gc, unsigned int domain, unsigned int bus,
                                    unsigned int dev, unsigned int func)
 {
     char *reset;
     int fd, rc;
 
-    reset = GCSPRINTF("%s/do_flr", SYSFS_PCIBACK_DRIVER);
+    reset = GCSPRINTF("%s/reset_device", SYSFS_PCIBACK_DRIVER);
     fd = open(reset, O_WRONLY);
     if (fd >= 0) {
         char *buf = GCSPRINTF(PCI_BDF, domain, bus, dev, func);
@@ -1478,10 +1477,6 @@ skip1:
         fclose(f);
     }
 out:
-    /* don't do multiple resets while some functions are still passed through */
-    if ( (pcidev->vdevfn & 0x7) == 0 ) {
-        libxl__device_pci_reset(gc, pcidev->domain, pcidev->bus, pcidev->dev, pcidev->func);
-    }
 
     if (!isstubdom) {
         rc = xc_deassign_device(ctx->xch, domid, pcidev_encode_bdf(pcidev));
@@ -1630,7 +1625,7 @@ out:
     return pcidevs;
 }
 
-int libxl__device_pci_destroy_all(libxl__gc *gc, uint32_t domid)
+int libxl__device_pci_destroy_all(libxl__gc *gc, uint32_t domid, libxl_pci_dev_wrap **pciw)
 {
     libxl_ctx *ctx = libxl__gc_owner(gc);
     libxl_device_pci *pcidevs;
@@ -1648,8 +1643,9 @@ int libxl__device_pci_destroy_all(libxl__gc *gc, uint32_t domid)
         if (libxl__device_pci_remove_common(gc, domid, pcidevs + i, 1) < 0)
             rc = ERROR_FAIL;
     }
-
-    free(pcidevs);
+    *pciw = malloc(sizeof(libxl_pci_dev_wrap));
+    (*pciw)->pcidevs = pcidevs;
+    (*pciw)->num_devs = num;
     return rc;
 }
 

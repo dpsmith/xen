@@ -1030,6 +1030,15 @@ static void domain_destroy_callback(libxl__egc *egc,
         dds->rc = rc;
     }
 
+    if(dis->pciw) {
+        for (int i = 0; i < dis->pciw->num_devs; i++) {
+            libxl_device_pci *pcidev = &dis->pciw->pcidevs[i];
+            libxl__device_pci_reset(gc, pcidev->domain, pcidev->bus, pcidev->dev, pcidev->func);
+        } 
+        free(dis->pciw->pcidevs);
+        free(dis->pciw);
+    }
+
     dds->domain_finished = 1;
     destroy_finish_check(egc, dds);
 }
@@ -1135,8 +1144,11 @@ void libxl__destroy_domid(libxl__egc *egc, libxl__destroy_domid_state *dis)
         goto out;
     }
 
-    if (libxl__device_pci_destroy_all(gc, domid) < 0)
+    rc = libxl__device_pci_destroy_all(gc, domid, &(dis->pciw));
+    if (rc < 0) {
         LOGD(ERROR, domid, "Pci shutdown failed");
+    }
+
     rc = xc_domain_pause(ctx->xch, domid);
     if (rc < 0) {
         LOGEVD(ERROR, rc, domid, "xc_domain_pause failed");

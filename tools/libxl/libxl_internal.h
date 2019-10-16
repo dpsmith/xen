@@ -1553,12 +1553,19 @@ _hidden int libxl__pci_topology_init(libxl__gc *gc,
 
 /* from libxl_pci */
 
+typedef struct libxl_pci_dev_wrap {
+    libxl_device_pci *pcidevs;
+    int num_devs;
+} libxl_pci_dev_wrap;
+
 _hidden int libxl__device_pci_add(libxl__gc *gc, uint32_t domid, libxl_device_pci *pcidev, int starting);
 _hidden int libxl__create_pci_backend(libxl__gc *gc, uint32_t domid,
                                       libxl_device_pci *pcidev, int num);
-_hidden int libxl__device_pci_destroy_all(libxl__gc *gc, uint32_t domid);
+_hidden int libxl__device_pci_destroy_all(libxl__gc *gc, uint32_t domid, libxl_pci_dev_wrap **pciw);
 _hidden bool libxl__is_igd_vga_passthru(libxl__gc *gc,
                                         const libxl_domain_config *d_config);
+_hidden int libxl__device_pci_reset(libxl__gc *gc, unsigned int domain, 
+                                    unsigned int bus, unsigned int dev, unsigned int func);
 
 /* from libxl_dtdev */
 
@@ -3909,6 +3916,7 @@ struct libxl__destroy_domid_state {
     libxl__devices_remove_state drs;
     libxl__destroy_devicemodel_state ddms;
     libxl__ev_child destroyer;
+    libxl_pci_dev_wrap *pciw;
     bool soft_reset;
 };
 
