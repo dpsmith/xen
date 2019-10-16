@@ -74,6 +74,8 @@ DEFINE_XEN_GUEST_HANDLE(xen_argo_unregister_ring_t);
 #ifdef CONFIG_COMPAT
 DEFINE_COMPAT_HANDLE(compat_argo_iov_t);
 #endif
+DEFINE_XEN_GUEST_HANDLE(xen_argo_viptables_list_t);
+DEFINE_XEN_GUEST_HANDLE(xen_argo_viptables_rule_t);
 
 static bool __read_mostly opt_argo;
 static bool __read_mostly opt_argo_mac_permissive;
@@ -202,6 +204,14 @@ struct argo_domain
     struct list_head wildcard_pend_list;
 };
 
+struct viptables_rule_node
+{
+    struct list_head list;
+    xen_argo_addr_t src;
+    xen_argo_addr_t dst;
+    uint32_t accept;
+};
+
 /*
  * Locking is organized as follows:
  *
@@ -321,6 +331,9 @@ static DEFINE_RWLOCK(L1_global_argo_rwlock); /* L1 */
 #else
 #define argo_dprintk(format, ... ) ((void)0)
 #endif
+
+/* viptables rules data structure */
+struct list_head viprules = LIST_HEAD_INIT(viprules);
 
 /*
  * This hash function is used to distribute rings within the per-domain
@@ -1967,6 +1980,221 @@ notify(struct domain *currd,
     return ret;
 }
 
+void
+viptables_print_rule(struct viptables_rule_node *rule)
+{
+    if ( rule == NULL )
+    {
+        printk("(null)\n");
+        return;
+    }
+
+    if ( rule->accept == 1 )
+        printk("ACCEPT");
+    else
+        printk("REJECT");
+
+    printk(" ");
+
+    if ( rule->src.domain_id == XEN_ARGO_DOMID_ANY )
+        printk("*");
+    else
+        printk("%i", rule->src.domain_id);
+
+    printk(":");
+
+    if ( rule->src.aport == XEN_ARGO_PORT_ANY )
+        printk("*");
+    else
+        printk("%u", rule->src.aport);
+
+    printk(" -> ");
+
+    if ( rule->dst.domain_id == XEN_ARGO_DOMID_ANY )
+        printk("*");
+    else
+        printk("%i", rule->dst.domain_id);
+
+    printk(":");
+
+    if ( rule->dst.aport == XEN_ARGO_PORT_ANY )
+        printk("*");
+    else
+        printk("%u", rule->dst.aport);
+
+    printk("\n");
+}
+
+static int
+viptables_add(XEN_GUEST_HANDLE(xen_argo_viptables_rule_t) rule,
+              int32_t position)
+{
+    struct viptables_rule_node* new;
+    struct list_head* cursor;
+
+    /* FIXME: where is position sanitized? */
+
+    /* First rule is n.1 */
+    position--;
+
+    new = xmalloc(struct viptables_rule_node);
+    if ( !new )
+        return -ENOMEM;
+
+    if ( copy_field_from_guest (new, rule, src) ||
+         copy_field_from_guest (new, rule, dst) ||
+         copy_field_from_guest (new, rule, accept) )
+        return -EFAULT;
+
+    printk(KERN_ERR "VIPTables: "); /* FIXME: why ERR? */
+    viptables_print_rule(new);
+
+    cursor = &viprules;
+    while ( position != 0 && cursor->next != &viprules )
+    {
+        cursor = cursor->next;
+        position--;
+    }
+    list_add(&new->list, cursor);
+
+    return 0;
+}
+
+static int
+viptables_del(XEN_GUEST_HANDLE(xen_argo_viptables_rule_t) rule,
+              int32_t position)
+{
+    struct list_head *cursor = NULL;
+    struct list_head *next = NULL;
+    struct viptables_rule_node *node;
+    struct xen_argo_viptables_rule *r;
+
+    /* FIXME: where is position sanitized? */
+
+    if ( position != -1 )
+    {
+        /* delete the rule number <position> */
+        cursor = &viprules;
+        while ( position != 0 && cursor->next != &viprules )
+        {
+            cursor = cursor->next;
+            position--;
+        }
+    }
+    else if ( !guest_handle_is_null(rule) )
+    {
+        /* delete the rule <rule> */
+        r = xmalloc(struct xen_argo_viptables_rule);
+
+        if ( copy_field_from_guest (r, rule, src) ||
+             copy_field_from_guest (r, rule, dst) ||
+             copy_field_from_guest (r, rule, accept) )
+            return -EFAULT;
+
+        list_for_each(cursor, &viprules)
+        {
+            node = list_entry(cursor, struct viptables_rule_node, list);
+
+            if ((node->src.domain_id == r->src.domain_id) &&
+                (node->src.aport     == r->src.aport)   &&
+                (node->dst.domain_id == r->dst.domain_id) &&
+                (node->dst.aport     == r->dst.aport))
+            {
+                position = 0;
+                break;
+            }
+        }
+        xfree(r);
+    }
+    else
+    {
+        /* flush all rules */
+        printk(KERN_ERR "VIPTables: flushing rules\n"); /* FIXME: why ERR? */
+        list_for_each_safe(cursor, next, &viprules)
+        {
+            node = list_entry(cursor, struct viptables_rule_node, list);
+            list_del(cursor);
+            xfree(node);
+        }
+    }
+
+    if ( position == 0 && cursor != &viprules )
+    {
+        printk(KERN_ERR "VIPTables: deleting rule: "); /* FIXME: why ERR? */
+        node = list_entry(cursor, struct viptables_rule_node, list);
+        viptables_print_rule(node);
+        list_del(cursor);
+        xfree(node);
+    }
+
+    return 0;
+}
+
+static int
+viptables_list(XEN_GUEST_HANDLE(xen_argo_viptables_list_t) list_hnd)
+{
+    struct list_head *cursor;
+    struct viptables_rule_node *node;
+    struct xen_argo_viptables_list rules_list;
+
+    memset(&rules_list, 0, sizeof (rules_list));
+    if (copy_field_from_guest (&rules_list, list_hnd, nrules))
+        return -EFAULT;
+
+    cursor = viprules.next;
+    while (rules_list.nrules != 0 && cursor != &viprules)
+    {
+        cursor = cursor->next;
+        rules_list.nrules--;
+    }
+
+    if (rules_list.nrules != 0)
+        return -EFAULT;
+
+    while (rules_list.nrules < XEN_ARGO_VIPTABLES_LIST_SIZE &&
+            cursor != &viprules)
+    {
+        node = list_entry(cursor, struct viptables_rule_node, list);
+
+        rules_list.rules[rules_list.nrules].src = node->src;
+        rules_list.rules[rules_list.nrules].dst = node->dst;
+        rules_list.rules[rules_list.nrules].accept = node->accept;
+
+        rules_list.nrules++;
+        cursor = cursor->next;
+  }
+
+    if (copy_to_guest(list_hnd, &rules_list, 1))
+        return -EFAULT;
+
+    return 0;
+}
+
+static size_t
+viptables_check(const xen_argo_addr_t *src, const xen_argo_addr_t *dst)
+{
+    struct list_head *cursor;
+    struct viptables_rule_node *node;
+
+    list_for_each(cursor, &viprules)
+    {
+        node = list_entry(cursor, struct viptables_rule_node, list);
+
+        if ( (node->src.domain_id == XEN_ARGO_DOMID_ANY ||
+              node->src.domain_id == src->domain_id) &&
+             (node->src.aport     == XEN_ARGO_PORT_ANY ||
+              node->src.aport     == src->aport)   &&
+             (node->dst.domain_id == XEN_ARGO_DOMID_ANY ||
+              node->dst.domain_id == dst->domain_id) &&
+             (node->dst.aport     == XEN_ARGO_PORT_ANY ||
+              node->dst.aport     == dst->aport))
+            return !node->accept;
+    }
+
+    /* Defaulting to ACCEPT */
+    return 0;
+}
+
 static long
 sendv(struct domain *src_d, xen_argo_addr_t *src_addr,
       const xen_argo_addr_t *dst_addr, xen_argo_iov_t *iovs, unsigned int niov,
@@ -2010,6 +2238,17 @@ sendv(struct domain *src_d, xen_argo_addr_t *src_addr,
         put_domain(dst_d);
 
         return ret;
+    }
+
+    if ( viptables_check(src_addr, dst_addr) )
+    {
+        gprintk(XENLOG_ERR, "argo: VIPTables REJECTED %i:%u -> %i:%u\n",
+                src_addr->domain_id, src_addr->aport,
+                dst_addr->domain_id, dst_addr->aport);
+
+        put_domain(dst_d);
+
+        return -EPERM;
     }
 
     read_lock(&L1_global_argo_rwlock);
@@ -2194,6 +2433,52 @@ do_argo_op(unsigned int cmd, XEN_GUEST_HANDLE_PARAM(void) arg1,
         }
 
         rc = notify(currd, ring_data_hnd);
+        break;
+    }
+
+    case XEN_ARGO_OP_viptables_add:
+    {
+        XEN_GUEST_HANDLE(xen_argo_viptables_rule_t) rule_hnd =
+            guest_handle_cast (arg1, xen_argo_viptables_rule_t);
+
+        if ( !currd->is_privileged )
+        {
+            rc = -EPERM;
+            break;
+        }
+
+        rc = viptables_add(rule_hnd, arg4);
+        break;
+    }
+
+    case XEN_ARGO_OP_viptables_del:
+    {
+        XEN_GUEST_HANDLE(xen_argo_viptables_rule_t) rule_hnd =
+          guest_handle_cast (arg1, xen_argo_viptables_rule_t);
+
+
+        if ( !currd->is_privileged )
+        {
+            rc = -EPERM;
+            break;
+        }
+
+        rc = viptables_del(rule_hnd, arg4);
+        break;
+    }
+
+    case XEN_ARGO_OP_viptables_list:
+    {
+        XEN_GUEST_HANDLE(xen_argo_viptables_list_t) rules_list_hnd =
+            guest_handle_cast(arg1, xen_argo_viptables_list_t);
+
+        if ( !currd->is_privileged )
+        {
+            rc = -EPERM;
+            break;
+        }
+
+        rc = viptables_list(rules_list_hnd);
         break;
     }
 
