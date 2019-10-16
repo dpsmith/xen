@@ -388,13 +388,21 @@ void libxl__domain_save(libxl__egc *egc, libxl__domain_save_state *dss)
      * Reject any domain which has vnuma enabled, even if the
      * configuration is empty. Only domains which have no vnuma
      * configuration at all are supported.
+     *
+     * Update: May-28-2018
+     * Jafar Al-Gharaibeh, ATCorp
+     *   We don't care (yet) about migration in openxt.
+     *   We can continue saving the guest
+     *   Ignore the error and just warn the user
      */
     ret = xc_domain_getvnuma(CTX->xch, domid, &nr_vnodes, &nr_vmemranges,
                              &nr_vcpus, NULL, NULL, NULL);
     if (ret != -1 || errno != EOPNOTSUPP) {
-        LOGD(ERROR, domid, "Cannot save a guest with vNUMA configured");
-        rc = ERROR_FAIL;
-        goto out;
+        LOGD(WARN, domid, "Trying to save a guest with vNUMA configured. This guest cannot be live-migrated");
+        /*
+         * rc = ERROR_FAIL;
+         * goto out;
+         */
     }
 
     if (dss->checkpointed_stream == LIBXL_CHECKPOINTED_STREAM_REMUS) {
