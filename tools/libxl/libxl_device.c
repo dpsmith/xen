@@ -795,7 +795,7 @@ int libxl__device_destroy(libxl__gc *gc, libxl__device *dev)
     }
 
     if (tapdisk_params)
-        rc = libxl__device_destroy_tapdisk(gc, tapdisk_params);
+        rc = libxl__device_destroy_tapdisk(gc, tapdisk_params, dev->domid);
 
 out:
     libxl__xs_transaction_abort(gc, &t);

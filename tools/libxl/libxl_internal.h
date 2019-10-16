@@ -1914,7 +1914,7 @@ _hidden char *libxl__blktap_devpath(libxl__gc *gc,
  *   by be_path.
  *   Always logs on failure.
  */
-_hidden int libxl__device_destroy_tapdisk(libxl__gc *gc, const char *params);
+_hidden int libxl__device_destroy_tapdisk(libxl__gc *gc, const char *params, uint32_t domid);
 
 /* Calls poll() again - useful to check whether a signaled condition
  * is still true.  Cannot fail.  Returns currently-true revents. */
