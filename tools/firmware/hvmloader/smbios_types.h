@@ -27,6 +27,10 @@
 
 #include <stdint.h>
 
+#define	SMBIOS_TYPE_EOT 127
+#define	SMBIOS_TYPE_VENDOR_MIN 128
+#define	SMBIOS_TYPE_VENDOR_MAX 255
+
 /* SMBIOS entry point -- must be written to a 16-bit aligned address
    between 0xf0000 and 0xfffff. 
  */
@@ -90,6 +94,13 @@ struct smbios_type_2 {
     uint8_t product_name_str;
     uint8_t version_str;
     uint8_t serial_number_str;
+    uint8_t asset_tag_str;
+    uint8_t feature_flags;
+    uint8_t location_in_chassis_str;
+    uint16_t chassis_handle;
+    uint8_t board_type;
+    uint8_t contained_object_handles_ct;
+    uint8_t contained_object_handles[];
 } __attribute__ ((packed));
 
 /* System Enclosure - Contained Elements */
@@ -140,6 +151,21 @@ struct smbios_type_4 {
     uint8_t serial_number_str;
     uint8_t asset_tag_str;
     uint8_t part_number_str;
+} __attribute__ ((packed));
+
+/* SMBIOS type 7 - Cache Information */
+struct smbios_type_7 {
+    struct smbios_structure_header header;
+    uint8_t socket_designation_str;
+    uint16_t cache_configuration;
+    uint16_t max_cache_size;
+    uint16_t installed_size;
+    uint16_t supported_sram_type;
+    uint16_t current_sram_type;
+    uint8_t cache_speed;
+    uint8_t err_correction_type;
+    uint8_t system_cache_type;
+    uint8_t associativity;
 } __attribute__ ((packed));
 
 /* SMBIOS type 11 - OEM Strings */
