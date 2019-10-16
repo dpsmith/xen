@@ -788,6 +788,10 @@ int libxl__device_destroy(libxl__gc *gc, libxl__device *dev)
             libxl__xs_path_cleanup(gc, t, be_path);
         }
 
+        if (dev->kind == LIBXL__DEVICE_KIND_VIF) {
+            libxl__xs_path_cleanup(gc, t, be_path);
+        }
+
         rc = libxl__xs_transaction_commit(gc, &t);
         if (!rc) break;
         if (rc < 0) goto out;
@@ -1327,7 +1331,12 @@ static void device_destroy_be_watch_cb(libxl__egc *egc,
         goto out;
     }
 
-    if (dir) {
+    /*
+     * OpenXT: libxl expects backend domains to cleanup backend nodes
+     * in xenstore. NDVM doesn't do that, so let's not wait forever
+     * here. libxl will take care of the xenstore nodes later
+     */
+    if (dir && aodev->dev->kind != LIBXL__DEVICE_KIND_VIF) {
         /* backend path still exists, wait a little longer... */
         return;
     }
