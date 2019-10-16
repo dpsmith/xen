@@ -1721,25 +1721,6 @@ static void domcreate_complete(libxl__egc *egc,
 
     bool retain_domain = !rc || rc == ERROR_ABORTED;
 
-    if (retain_domain) {
-        libxl__domain_userdata_lock *lock;
-
-        /* Note that we hold CTX lock at this point so only need to
-         * take data store lock
-         */
-        lock = libxl__lock_domain_userdata(gc, dcs->guest_domid);
-        if (!lock) {
-            rc = ERROR_LOCK_FAIL;
-        } else {
-            libxl__update_domain_configuration(gc, d_config_saved, d_config);
-            int cfg_rc = libxl__set_domain_configuration
-                (gc, dcs->guest_domid, d_config_saved);
-            if (!rc)
-                rc = cfg_rc;
-            libxl__unlock_domain_userdata(lock);
-        }
-    }
-
     libxl_domain_config_dispose(d_config_saved);
 
     if (!retain_domain) {

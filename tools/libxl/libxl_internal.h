@@ -3606,7 +3606,7 @@ _hidden void libxl__bootloader_run(libxl__egc*, libxl__bootloader_state *st);
         libxl__prepare_ao_device(ao, aodev);                            \
         aodev->action = LIBXL__DEVICE_ACTION_ADD;                       \
         aodev->callback = device_addrm_aocomplete;                      \
-        aodev->update_json = true;                                      \
+        aodev->update_json = false;                                     \
         libxl__device_##type##_add(egc, domid, type, aodev);            \
                                                                         \
         return AO_INPROGRESS;                                           \
