@@ -57,9 +57,6 @@ void send_timeoffset_req(unsigned long timeoff)
         .state = STATE_IOREQ_READY,
     };
 
-    if ( timeoff == 0 )
-        return;
-
     if ( hvm_broadcast_ioreq(&p, true) != 0 )
         gprintk(XENLOG_ERR, "Unsuccessful timeoffset update\n");
 }

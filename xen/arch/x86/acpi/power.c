@@ -132,6 +132,8 @@ static void thaw_domains(void)
     for_each_domain ( d )
     {
         restore_vcpu_affinity(d);
+        if ( is_hvm_domain(d) )
+            rtc_update_clock(d);
         domain_unpause(d);
     }
     rcu_read_unlock(&domlist_read_lock);
