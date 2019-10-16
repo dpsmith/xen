@@ -1572,6 +1572,19 @@ int xc_tbuf_disable(xc_interface *xch);
  */
 int xc_tbuf_set_size(xc_interface *xch, unsigned long size);
 
+enum {
+    XC_MAP_CACHEATTR_UC = XEN_DOMCTL_MEM_CACHEATTR_UC,
+    XC_MAP_CACHEATTR_WC = XEN_DOMCTL_MEM_CACHEATTR_WC,
+    XC_MAP_CACHEATTR_WT = XEN_DOMCTL_MEM_CACHEATTR_WT,
+    XC_MAP_CACHEATTR_WP = XEN_DOMCTL_MEM_CACHEATTR_WP,
+    XC_MAP_CACHEATTR_WB = XEN_DOMCTL_MEM_CACHEATTR_WB,
+    XC_MAP_CACHEATTR_UCM = XEN_DOMCTL_MEM_CACHEATTR_UCM
+};
+
+void *xc_map_foreign_batch_cacheattr(xc_interface *xch, uint32_t dom, int prot,
+                                     xen_pfn_t *arr, int num,
+                                     int cache_type);
+
 /**
  * This function retrieves the current size of the trace buffers.
  * Note that the size returned is in terms of bytes, not pages.

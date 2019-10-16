@@ -125,6 +125,46 @@ void *xenforeignmemory_map(xenforeignmemory_handle *fmem,
     return xenforeignmemory_map2(fmem, dom, NULL, prot, 0, num, arr, err);
 }
 
+void *xenforeignmemory_map_cacheattr(xenforeignmemory_handle *fmem,
+                                     uint32_t dom, int prot,
+                                     int cache_attr_type,
+                                     size_t num,
+                                     const xen_pfn_t arr[/*num*/],
+                                     int err[/*num*/])
+{
+    void *ret;
+    int *err_to_free = NULL;
+
+    if ( err == NULL )
+        err = err_to_free = malloc(num * sizeof(int));
+
+    if ( err == NULL )
+        return NULL;
+
+    ret = osdep_xenforeignmemory_map_cacheattr(fmem, dom, prot,
+                                               cache_attr_type,
+                                               num, arr, err);
+    if ( ret && err_to_free )
+    {
+        int i;
+
+        for ( i = 0 ; i < num ; i++ )
+        {
+            if ( err[i] )
+            {
+                errno = -err[i];
+                (void)osdep_xenforeignmemory_unmap(fmem, ret, num);
+                ret = NULL;
+                break;
+            }
+        }
+    }
+
+    free(err_to_free);
+
+    return ret;
+}
+
 int xenforeignmemory_unmap(xenforeignmemory_handle *fmem,
                            void *addr, size_t num)
 {

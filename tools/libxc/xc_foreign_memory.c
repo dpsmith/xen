@@ -87,6 +87,23 @@ void *xc_map_foreign_bulk(xc_interface *xch, uint32_t dom, int prot,
     return xenforeignmemory_map(xch->fmem, dom, prot, num, arr, err);
 }
 
+void *xc_map_foreign_batch_cacheattr(xc_interface *xch, uint32_t dom, int prot,
+                                     xen_pfn_t *arr, int num, int cache_type)
+{
+    int *err;
+    void *ret;
+
+    err = calloc(num, sizeof(int));
+    if ( err == NULL )
+        return NULL;
+
+    ret = xenforeignmemory_map_cacheattr(xch->fmem, dom, prot,
+                                         cache_type, num, arr, err);
+    free(err);
+    return ret;
+}
+
+
 /*
  * Local variables:
  * mode: C

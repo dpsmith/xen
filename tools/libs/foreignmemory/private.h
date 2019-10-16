@@ -33,6 +33,11 @@ void *osdep_xenforeignmemory_map(xenforeignmemory_handle *fmem,
                                  uint32_t dom, void *addr,
                                  int prot, int flags, size_t num,
                                  const xen_pfn_t arr[num], int err[num]);
+void *osdep_xenforeignmemory_map_cacheattr(xenforeignmemory_handle *fmem,
+                                           uint32_t dom, int prot,
+                                           int cache_attr_type,
+                                           size_t num,
+                                           const xen_pfn_t arr[num], int err[num]);
 int osdep_xenforeignmemory_unmap(xenforeignmemory_handle *fmem,
                                  void *addr, size_t num);
 

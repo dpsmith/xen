@@ -120,6 +120,14 @@ void *xenforeignmemory_map2(xenforeignmemory_handle *fmem, uint32_t dom,
                             const xen_pfn_t arr[/*pages*/], int err[/*pages*/]);
 
 /*
+ * Similar to xenforeignmemory_map, takes an additional argument
+ * specifying the cache attribute to apply to the new memory mapping.
+ */
+void *xenforeignmemory_map_cacheattr(xenforeignmemory_handle *fmem, uint32_t dom,
+                           int prot, int cache_attr_type, size_t pages,
+                           const xen_pfn_t arr[/*pages*/], int err[/*pages*/]);
+
+/*
  * Unmap a mapping previous created with xenforeignmemory_map().
  *
  * Returns 0 on success on failure sets errno and returns -1.

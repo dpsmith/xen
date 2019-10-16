@@ -95,6 +95,11 @@ typedef struct privcmd_mmap_resource {
 	__u64 addr;
 } privcmd_mmap_resource_t;
 
+typedef struct privcmd_mmapcacheattr {
+       __u64 addr;
+       int type;
+} privcmd_mmapcacheattr_t;
+
 /*
  * @cmd: IOCTL_PRIVCMD_HYPERCALL
  * @arg: &privcmd_hypercall_t
@@ -116,5 +121,7 @@ typedef struct privcmd_mmap_resource {
 	_IOC(_IOC_NONE, 'P', 7, sizeof(privcmd_mmap_resource_t))
 #define IOCTL_PRIVCMD_UNIMPLEMENTED				\
 	_IOC(_IOC_NONE, 'P', 0xFF, 0)
+#define IOCTL_PRIVCMD_MMAPCACHEATTR                             \
+	_IOC(_IOC_NONE, 'P', 200, sizeof(privcmd_mmapcacheattr_t))
 
 #endif /* __LINUX_PUBLIC_PRIVCMD_H__ */

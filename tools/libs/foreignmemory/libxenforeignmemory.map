@@ -3,6 +3,7 @@ VERS_1.0 {
 		xenforeignmemory_open;
 		xenforeignmemory_close;
 		xenforeignmemory_map;
+		xenforeignmemory_map_cacheattr;
 		xenforeignmemory_unmap;
 	local: *; /* Do not expose anything by default */
 };

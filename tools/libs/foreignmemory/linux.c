@@ -159,13 +159,17 @@ out:
     return rc;
 }
 
-void *osdep_xenforeignmemory_map(xenforeignmemory_handle *fmem,
-                                 uint32_t dom, void *addr,
-                                 int prot, int flags, size_t num,
-                                 const xen_pfn_t arr[/*num*/], int err[/*num*/])
+static void *map_foreign_cacheattr(xenforeignmemory_handle *fmem,
+                                   uint32_t dom, void *addr,
+                                   int prot, int flags,
+                                   int set_cache_attr, int cache_attr_type,
+                                   size_t num,
+                                   const xen_pfn_t arr[/*num*/],
+                                   int err[/*num*/])
 {
     int fd = fmem->fd;
     privcmd_mmapbatch_v2_t ioctlx;
+    privcmd_mmapcacheattr_t cacheattr;
     size_t i;
     int rc;
 
@@ -175,6 +179,20 @@ void *osdep_xenforeignmemory_map(xenforeignmemory_handle *fmem,
     {
         PERROR("mmap failed");
         return NULL;
+    }
+
+    if ( set_cache_attr )
+    {
+        cacheattr.addr = (unsigned long)addr;
+        cacheattr.type = cache_attr_type;
+
+        if ( ioctl(fd, IOCTL_PRIVCMD_MMAPCACHEATTR, &cacheattr) ) {
+            int saved_errno = errno;
+            PERROR("Failed to set cache attribute to %d\n", cache_attr_type);
+            (void)munmap(addr, num << PAGE_SHIFT);
+            errno = saved_errno;
+            return NULL;
+        }
     }
 
     ioctlx.num = num;
@@ -281,6 +299,27 @@ void *osdep_xenforeignmemory_map(xenforeignmemory_handle *fmem,
     }
 
     return addr;
+}
+
+
+void *osdep_xenforeignmemory_map(xenforeignmemory_handle *fmem,
+                                 uint32_t dom, void *addr,
+                                 int prot, int flags, size_t num,
+                                 const xen_pfn_t arr[/*num*/], int err[/*num*/])
+{
+    return map_foreign_cacheattr(fmem, dom, addr, prot, flags, 0, 0, num, arr, err);
+}
+
+void *osdep_xenforeignmemory_map_cacheattr(xenforeignmemory_handle *fmem,
+                                           uint32_t dom,
+                                           int prot,
+                                           int cache_attr_type,
+                                           size_t num,
+                                           const xen_pfn_t arr[/*num*/],
+                                           int err[/*num*/])
+{
+    return map_foreign_cacheattr(fmem, dom, NULL, prot, 0, 1, cache_attr_type,
+                                 num, arr, err);
 }
 
 int osdep_xenforeignmemory_unmap(xenforeignmemory_handle *fmem,
