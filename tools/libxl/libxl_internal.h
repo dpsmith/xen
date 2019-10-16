@@ -121,6 +121,7 @@
 #define STUBDOM_CONSOLE_RESTORE 2
 #define STUBDOM_CONSOLE_SERIAL 3
 #define STUBDOM_SPECIAL_CONSOLES 3
+#define LIBXL_LINUX_STUBDOM_MEM 144
 #define TAP_DEVICE_SUFFIX "-emu"
 #define DOMID_XS_PATH "domid"
 #define INVALID_DOMID ~0
@@ -2197,6 +2198,9 @@ _hidden char *libxl__json_object_to_json(libxl__gc *gc,
 _hidden int libxl__device_model_version_running(libxl__gc *gc, uint32_t domid);
   /* Return the system-wide default device model */
 _hidden libxl_device_model_version libxl__default_device_model(libxl__gc *gc);
+  /* Based on /libxl/$domid/stubdom-version xenstore key
+   * default is minios */
+_hidden int libxl__stubdomain_version_running(libxl__gc *gc, uint32_t domid);
 
 #define DEVICE_MODEL_XS_PATH(gc, dm_domid, domid, fmt, _a...)              \
     libxl__sprintf(gc, "/local/domain/%u/device-model/%u" fmt, dm_domid,   \

@@ -1570,7 +1570,12 @@ static void domcreate_devmodel_started(libxl__egc *egc,
     if (dcs->sdss.dm.guest_domid) {
         if (d_config->b_info.device_model_version
             == LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN) {
-            libxl__qmp_initializations(gc, domid, d_config);
+            if (!libxl_defbool_val(d_config->b_info.device_model_stubdomain)) {
+                libxl__qmp_initializations(gc, domid, d_config);
+            } else {
+                int stubdom_domid = dcs->dmss.pvqemu.guest_domid;
+                libxl__qmp_initializations(gc, stubdom_domid, d_config);
+            }
         }
     }
 

@@ -430,6 +430,28 @@ int libxl__device_model_version_running(libxl__gc *gc, uint32_t domid)
     return value;
 }
 
+int libxl__stubdomain_version_running(libxl__gc *gc, uint32_t domid)
+{
+    char *path = NULL;
+    char *stub_version = NULL;
+    libxl_stubdomain_version value;
+
+    path = libxl__xs_libxl_path(gc, domid);
+    path = libxl__sprintf(gc, "%s/stubdom-version", path);
+    stub_version = libxl__xs_read(gc, XBT_NULL, path);
+    if (!stub_version) {
+        return LIBXL_STUBDOMAIN_VERSION_MINIOS;
+    }
+
+    if (libxl_stubdomain_version_from_string(stub_version, &value) < 0) {
+        libxl_ctx *ctx = libxl__gc_owner(gc);
+        LIBXL__LOG(ctx, LIBXL__LOG_ERROR,
+                   "fatal: %s contain a wrong value (%s)", path, stub_version);
+        return -1;
+    }
+    return value;
+}
+
 /* Portability note: this lock utilises flock(2) so a proper implementation of
  * flock(2) is required.
  */

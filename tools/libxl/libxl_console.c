@@ -128,8 +128,17 @@ static int libxl__primary_console_find(libxl_ctx *ctx, uint32_t domid_vm,
 
     if (stubdomid) {
         *domid = stubdomid;
-        *cons_num = STUBDOM_CONSOLE_SERIAL;
         *type = LIBXL_CONSOLE_TYPE_PV;
+        switch (libxl__stubdomain_version_running(gc, stubdomid)) {
+        case LIBXL_STUBDOMAIN_VERSION_MINIOS:
+            *cons_num = STUBDOM_CONSOLE_SERIAL;
+            break;
+        case LIBXL_STUBDOMAIN_VERSION_LINUX:
+            *cons_num = 1;
+            break;
+        default:
+            abort();
+        }
     } else {
         switch (libxl__domain_type(gc, domid_vm)) {
         case LIBXL_DOMAIN_TYPE_HVM:
