@@ -209,7 +209,9 @@ unsigned int iterations = 0;
 int show_vcpus = 0;
 int show_networks = 0;
 int show_vbds = 0;
+#ifdef TMEM_STATS
 int show_tmem = 0;
+#endif
 int repeat_header = 0;
 int show_full_name = 0;
 #define PROMPT_VAL_LEN 80
@@ -362,9 +364,11 @@ static int handle_key(int ch)
 		case 'b': case 'B':
 			show_vbds ^= 1;
 			break;
+#ifdef TMEM_STATS
 		case 't': case 'T':
 			show_tmem ^= 1;
 			break;
+#endif
 		case 'r': case 'R':
 			repeat_header ^= 1;
 			break;
@@ -894,7 +898,11 @@ void do_summary(void)
 	      num_domains, run, block, pause, crash, dying, shutdown);
 
 	used = xenstat_node_tot_mem(cur_node)-xenstat_node_free_mem(cur_node);
+#ifdef TMEM_STATS
 	freeable_mb = xenstat_node_freeable_mb(cur_node);
+#else
+	freeable_mb = 0;
+#endif
 
 	/* Dump node memory and cpu information */
 	if ( freeable_mb <= 0 )
@@ -952,10 +960,12 @@ void do_bottom_line(void)
 		attr_addstr(show_vbds ? COLOR_PAIR(1) : 0, "ds");
 		addstr("  ");
 
+#ifdef TMEM_STATS
 		/* tmem */
 		addch(A_REVERSE | 'T');
 		attr_addstr(show_tmem ? COLOR_PAIR(1) : 0, "mem");
 		addstr("  ");
+#endif
 
 
 		/* vcpus */
@@ -1086,6 +1096,7 @@ void do_vbd(xenstat_domain *domain)
 	}
 }
 
+#ifdef TMEM_STATS
 /* Output all tmem information */
 void do_tmem(xenstat_domain *domain)
 {
@@ -1102,6 +1113,7 @@ void do_tmem(xenstat_domain *domain)
 			succ_pers_puts, succ_pers_gets);
 
 }
+#endif
 
 static void top(void)
 {
@@ -1155,8 +1167,10 @@ static void top(void)
 			do_network(domains[i]);
 		if (show_vbds)
 			do_vbd(domains[i]);
+#ifdef TMEM_STATS
 		if (show_tmem)
 			do_tmem(domains[i]);
+#endif
 	}
 
 	if (!batch)
@@ -1232,9 +1246,11 @@ int main(int argc, char **argv)
 		case 'f':
 			show_full_name = 1;
 			break;
+#ifdef TMEM_STATS
 		case 't':
 			show_tmem = 1;
 			break;
+#endif
 		}
 	}
 

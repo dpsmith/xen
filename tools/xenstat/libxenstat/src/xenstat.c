@@ -145,6 +145,7 @@ static inline unsigned long long parse(char *s, char *match)
 	return ret;
 }
 
+#ifdef TMEM_STATS
 void domain_get_tmem_stats(xenstat_handle * handle, xenstat_domain * domain)
 {
 	char buffer[4096];
@@ -157,6 +158,7 @@ void domain_get_tmem_stats(xenstat_handle * handle, xenstat_domain * domain)
 	domain->tmem_stats.succ_pers_puts = parse(buffer,"Pp");
 	domain->tmem_stats.succ_pers_gets = parse(buffer,"Gp");
 }
+#endif
 
 xenstat_node *xenstat_get_node(xenstat_handle * handle, unsigned int flags)
 {
@@ -166,7 +168,9 @@ xenstat_node *xenstat_get_node(xenstat_handle * handle, unsigned int flags)
 	xc_domaininfo_t domaininfo[DOMAIN_CHUNK_SIZE];
 	int new_domains;
 	unsigned int i;
+#ifdef TMEM_STATS
 	int rc;
+#endif
 
 	/* Create the node */
 	node = (xenstat_node *) calloc(1, sizeof(xenstat_node));
@@ -190,9 +194,12 @@ xenstat_node *xenstat_get_node(xenstat_handle * handle, unsigned int flags)
 	node->free_mem = ((unsigned long long)physinfo.free_pages)
 	    * handle->page_size;
 
+#ifdef TMEM_STATS
 	rc = xc_tmem_control(handle->xc_handle, -1,
                          XEN_SYSCTL_TMEM_OP_QUERY_FREEABLE_MB, -1, 0, 0, NULL);
 	node->freeable_mb = (rc < 0) ? 0 : rc;
+#endif
+
 	/* malloc(0) is not portable, so allocate a single domain.  This will
 	 * be resized below. */
 	node->domains = malloc(sizeof(xenstat_domain));
@@ -260,7 +267,9 @@ xenstat_node *xenstat_get_node(xenstat_handle * handle, unsigned int flags)
 			domain->networks = NULL;
 			domain->num_vbds = 0;
 			domain->vbds = NULL;
+#ifdef TMEM_STATS
 			domain_get_tmem_stats(handle,domain);
+#endif
 
 			domain++;
 			node->num_domains++;
@@ -342,10 +351,12 @@ unsigned long long xenstat_node_free_mem(xenstat_node * node)
 	return node->free_mem;
 }
 
+#ifdef TMEM_STATS
 long xenstat_node_freeable_mb(xenstat_node * node)
 {
 	return node->freeable_mb;
 }
+#endif
 
 unsigned int xenstat_node_num_domains(xenstat_node * node)
 {
@@ -729,6 +740,7 @@ unsigned long long xenstat_vbd_wr_sects(xenstat_vbd * vbd)
 	return vbd->wr_sects;
 }
 
+#ifdef TMEM_STATS
 /*
  * Tmem functions
  */
@@ -761,7 +773,7 @@ unsigned long long xenstat_tmem_succ_pers_gets(xenstat_tmem *tmem)
 {
 	return tmem->succ_pers_gets;
 }
-
+#endif
 
 static char *xenstat_get_domain_name(xenstat_handle *handle, unsigned int domain_id)
 {

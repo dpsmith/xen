@@ -49,15 +49,19 @@ struct xenstat_node {
 	unsigned long long free_mem;
 	unsigned int num_domains;
 	xenstat_domain *domains;	/* Array of length num_domains */
+#ifdef USE_TMEM
 	long freeable_mb;
+#endif
 };
 
+#ifdef USE_TMEM
 struct xenstat_tmem {
 	unsigned long long curr_eph_pages;
 	unsigned long long succ_eph_gets;
 	unsigned long long succ_pers_puts;
 	unsigned long long succ_pers_gets;
 };
+#endif
 
 struct xenstat_domain {
 	unsigned int id;
@@ -73,7 +77,9 @@ struct xenstat_domain {
 	xenstat_network *networks;	/* Array of length num_networks */
 	unsigned int num_vbds;
 	xenstat_vbd *vbds;
+#ifdef USE_TMEM
 	xenstat_tmem tmem_stats;
+#endif
 };
 
 struct xenstat_vcpu {
