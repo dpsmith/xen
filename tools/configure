@@ -4622,13 +4622,6 @@ fi
 if test "x$ipxe" = "xy" -o -n "$ipxe_path" ; then :
 
 
-    if test "x$enable_rombios" = "xno"; then :
-
-        as_fn_error $? "Rombios is required to use IPXE" "$LINENO" 5
-
-fi
-
-
 cat >>confdefs.h <<_ACEOF
 #define IPXE_PATH "${ipxe_path:-$XENFIRMWAREDIR/ipxe.bin}"
 _ACEOF

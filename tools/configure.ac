@@ -266,10 +266,6 @@ AC_ARG_WITH([system-ipxe],
 ],[])
 AS_IF([test "x$ipxe" = "xy" -o -n "$ipxe_path" ], [
 
-    AS_IF([test "x$enable_rombios" = "xno"], [
-        AC_MSG_ERROR([Rombios is required to use IPXE])
-    ], [])
-
     AC_DEFINE_UNQUOTED([IPXE_PATH],
                        ["${ipxe_path:-$XENFIRMWAREDIR/ipxe.bin}"],
                        [IPXE path])

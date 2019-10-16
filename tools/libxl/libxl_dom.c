@@ -1150,7 +1150,8 @@ static int libxl__domain_firmware(libxl__gc *gc,
     }
 
     if (info->type == LIBXL_DOMAIN_TYPE_HVM &&
-        info->u.hvm.bios == LIBXL_BIOS_TYPE_ROMBIOS &&
+        (info->u.hvm.bios == LIBXL_BIOS_TYPE_ROMBIOS ||
+         info->u.hvm.bios == LIBXL_BIOS_TYPE_SEABIOS) &&
         libxl__ipxe_path()) {
         const char *fp = libxl__ipxe_path();
         rc = xc_dom_module_file(dom, fp, "ipxe");
