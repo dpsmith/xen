@@ -60,6 +60,9 @@
 
 #include <xen-tools/libs.h>
 
+/* OpenXT: we use syslog */
+#include <syslog.h>
+
 #include "xentoollog.h"
 
 #include <xen/io/xenbus.h>

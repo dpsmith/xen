@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <libxl.h>
 #include <libxl_utils.h>
@@ -36,10 +37,12 @@ void dolog(const char *file, int line, const char *func, char *fmt, ...)
     va_start(ap, fmt);
     rc = vasprintf(&s, fmt, ap);
     va_end(ap);
-    if (rc >= 0)
+    if (rc >= 0) {
         /* we ignore write errors since we have no way to report them;
          * the alternative would be to abort the whole program */
         libxl_write_exactly(NULL, logfile, s, rc, NULL, NULL);
+        syslog(LOG_USER | LOG_INFO, "[%d] %s", getpid(), s);
+    }
     free(s);
 }
 
@@ -250,7 +253,6 @@ void print_bitmap(uint8_t *map, int maplen, FILE *stream)
 
 int do_daemonize(char *name, const char *pidfile)
 {
-    char *fullname;
     pid_t child1;
     int nullfd, ret = 0;
 
@@ -264,22 +266,10 @@ int do_daemonize(char *name, const char *pidfile)
 
     postfork();
 
-    ret = libxl_create_logfile(ctx, name, &fullname);
-    if (ret) {
-        LOG("failed to open logfile %s: %s",fullname,strerror(errno));
-        exit(-1);
-    }
-
-    CHK_SYSCALL(logfile = open(fullname, O_WRONLY|O_CREAT|O_APPEND, 0644));
-    free(fullname);
-    assert(logfile >= 3);
-
     CHK_SYSCALL(nullfd = open("/dev/null", O_RDONLY));
     assert(nullfd >= 3);
 
     dup2(nullfd, 0);
-    dup2(logfile, 1);
-    dup2(logfile, 2);
 
     close(nullfd);
 

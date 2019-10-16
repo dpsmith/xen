@@ -211,6 +211,34 @@ char *libxl__dirname(libxl__gc *gc, const char *s)
     return libxl__strndup(gc, s, c - s);
 }
 
+static int xtl_level_to_syslog_level(xentoollog_level x)
+{
+    int s;
+
+    switch(x) {
+    case XTL_DEBUG:
+        s = LOG_DEBUG;
+        break;
+    case XTL_NOTICE:
+        s = LOG_NOTICE;
+        break;
+    case XTL_WARN:
+        s = LOG_WARNING;
+        break;
+    case XTL_ERROR:
+        s = LOG_ERR;
+        break;
+    case XTL_CRITICAL:
+        s = LOG_CRIT;
+        break;
+    default:
+        s = LOG_INFO;
+        break;
+    }
+
+    return s;
+}
+
 void libxl__logv(libxl_ctx *ctx, xentoollog_level msglevel, int errnoval,
              const char *file, int line, const char *func,
              uint32_t domid, const char *fmt, va_list ap)
@@ -237,10 +265,15 @@ void libxl__logv(libxl_ctx *ctx, xentoollog_level msglevel, int errnoval,
     if (domid != INVALID_DOMID)
         snprintf(domain, sizeof(domain), "Domain %"PRIu32":", domid);
  x:
-    xtl_log(ctx->lg, msglevel, errnoval, "libxl",
-            "%s%s%s%s%s" "%s",
-            fileline, func&&file?":":"", func?func:"", func||file?": ":"",
-            domain, base);
+    /* xtl_log(ctx->lg, msglevel, errnoval, "libxl", */
+    /*         "%s%s%s%s%s" "%s", */
+    /*         fileline, func&&file?":":"", func?func:"", func||file?": ":"", */
+    /*         domain, base); */
+    /* OpenXT: we use syslog */
+    syslog(LOG_USER | xtl_level_to_syslog_level(msglevel), "[%d] %s%s%s%s%s%s",
+           getpid(), fileline, func&&file?":":"", func?func:"",
+           func||file?":":"", domain, base);
+
     if (base != enomem) free(base);
     errno = esave;
 }

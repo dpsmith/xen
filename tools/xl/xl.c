@@ -24,6 +24,9 @@
 #include <inttypes.h>
 #include <regex.h>
 
+/* OpenXT: we use syslog */
+#include <syslog.h>
+
 #include <libxl.h>
 #include <libxl_utils.h>
 #include <libxlutil.h>
@@ -343,6 +346,8 @@ static void xl_ctx_free(void)
         free(lockfile);
         lockfile = NULL;
     }
+    /* OpenXT: we use syslog */
+    closelog();
 }
 
 int main(int argc, char **argv)
@@ -385,6 +390,8 @@ int main(int argc, char **argv)
     logger = xtl_createlogger_stdiostream(stderr, minmsglevel,
         (progress_use_cr ? XTL_STDIOSTREAM_PROGRESS_USE_CR : 0));
     if (!logger) exit(EXIT_FAILURE);
+    /* OpenXT: we use syslog, we could probably comment out the above. */
+    openlog("xl", LOG_CONS, LOG_USER);
 
     xl_ctx_alloc();
 
