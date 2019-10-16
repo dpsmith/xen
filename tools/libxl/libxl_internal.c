@@ -377,7 +377,7 @@ _hidden int libxl__compare_macs(libxl_mac *a, libxl_mac *b)
     return 0;
 }
 
-_hidden int libxl__mac_is_default(libxl_mac *mac)
+_hidden int libxl__mac_is_default(const libxl_mac *mac)
 {
     return (!(*mac)[0] && !(*mac)[1] && !(*mac)[2] &&
             !(*mac)[3] && !(*mac)[4] && !(*mac)[5]);

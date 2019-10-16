@@ -823,8 +823,11 @@ static int libxl__build_device_model_args_old(libxl__gc *gc,
 
         for (i = 0; i < num_nics; i++) {
             if (nics[i].nictype == LIBXL_NIC_TYPE_VIF_IOEMU) {
-                char *smac = GCSPRINTF(
-                                   LIBXL_MAC_FMT, LIBXL_MAC_BYTES(nics[i].mac));
+                char *smac;
+                if (!libxl__mac_is_default(&nics[i].mac_ioemu))
+                    smac = GCSPRINTF(LIBXL_MAC_FMT, LIBXL_MAC_BYTES(nics[i].mac_ioemu));
+                else
+                    smac = GCSPRINTF(LIBXL_MAC_FMT, LIBXL_MAC_BYTES(nics[i].mac));
                 const char *ifname = libxl__device_nic_devname(gc,
                                                 domid, nics[i].devid,
                                                 LIBXL_NIC_TYPE_VIF_IOEMU);
@@ -1462,8 +1465,11 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
         }
         for (i = 0; i < num_nics; i++) {
             if (nics[i].nictype == LIBXL_NIC_TYPE_VIF_IOEMU) {
-                char *smac = GCSPRINTF(LIBXL_MAC_FMT,
-                                       LIBXL_MAC_BYTES(nics[i].mac));
+                char *smac;
+                if (!libxl__mac_is_default(&nics[i].mac_ioemu))
+                    smac = GCSPRINTF(LIBXL_MAC_FMT, LIBXL_MAC_BYTES(nics[i].mac_ioemu));
+                else
+                    smac = GCSPRINTF(LIBXL_MAC_FMT, LIBXL_MAC_BYTES(nics[i].mac));
                 const char *ifname = libxl__device_nic_devname(gc,
                                                 guest_domid, nics[i].devid,
                                                 LIBXL_NIC_TYPE_VIF_IOEMU);
@@ -1985,6 +1991,10 @@ static void libxl__dm_vifs_from_hvm_guest_config(libxl__gc *gc,
         if (dm_config->nics[i].ifname)
             dm_config->nics[i].ifname = GCSPRINTF("%s" TAP_DEVICE_SUFFIX,
                                                   dm_config->nics[i].ifname);
+        if (!libxl__mac_is_default(&guest_config->nics[i].mac_stubdom))
+            memcpy(dm_config->nics[i].mac, guest_config->nics[i].mac_stubdom, 6);
+
+		dm_config->nics[i].mac[0] = dm_config->nics[i].mac[0] ^ 0x2;
     }
 
     dm_config->num_nics = nr;

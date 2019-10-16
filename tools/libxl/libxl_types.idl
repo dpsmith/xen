@@ -692,6 +692,8 @@ libxl_device_nic = Struct("device_nic", [
     ("mtu", integer),
     ("model", string),
     ("mac", libxl_mac),
+    ("mac_ioemu", libxl_mac),
+    ("mac_stubdom", libxl_mac),
     ("ip", string),
     ("bridge", string),
     ("ifname", string),

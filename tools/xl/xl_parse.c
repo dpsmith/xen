@@ -441,6 +441,26 @@ int parse_nic_config(libxl_device_nic *nic, XLU_Config **config, char *token)
             nic->mac[i] = val;
             oparg = endptr + 1;
         }
+    } else if (MATCH_OPTION("mac_ioemu", token, oparg)) {
+        for (i = 0; i < 6; i++) {
+            val = strtoul(oparg, &endptr, 16);
+            if ((oparg == endptr) || (val > 255)) {
+                fprintf(stderr, "Invalid parameter `mac'.\n");
+                return 1;
+            }
+            nic->mac_ioemu[i] = val;
+            oparg = endptr + 1;
+        }
+    } else if (MATCH_OPTION("mac_stubdom", token, oparg)) {
+        for (i = 0; i < 6; i++) {
+            val = strtoul(oparg, &endptr, 16);
+            if ((oparg == endptr) || (val > 255)) {
+                fprintf(stderr, "Invalid parameter `mac'.\n");
+                return 1;
+            }
+            nic->mac_stubdom[i] = val;
+            oparg = endptr + 1;
+        }
     } else if (MATCH_OPTION("bridge", token, oparg)) {
         replace_string(&nic->bridge, oparg);
     } else if (MATCH_OPTION("netdev", token, oparg)) {

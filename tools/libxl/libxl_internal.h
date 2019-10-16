@@ -1940,7 +1940,7 @@ _hidden int libxl__parse_mac(const char *s, libxl_mac mac);
 /* compare mac address @a and @b. 0 if the same, -ve if a<b and +ve if a>b */
 _hidden int libxl__compare_macs(libxl_mac *a, libxl_mac *b);
 /* return true if mac address is all zero (the default value) */
-_hidden int libxl__mac_is_default(libxl_mac *mac);
+_hidden int libxl__mac_is_default(const libxl_mac *mac);
 /* init a recursive mutex */
 _hidden int libxl__init_recursive_mutex(libxl_ctx *ctx, pthread_mutex_t *lock);
 
