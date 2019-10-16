@@ -1042,13 +1042,14 @@ static char *qemu_disk_ide_drive_string(libxl__gc *gc, const char *target_path,
     const char *active_disk = disk->active_disk;
     const char *hidden_disk = disk->hidden_disk;
 
-    assert(disk->readwrite); /* should have been checked earlier */
+    // OpenXT allows read-only IDE drives
+    //assert(disk->readwrite); /* should have been checked earlier */
 
     switch (colo_mode) {
     case LIBXL__COLO_NONE:
         drive = GCSPRINTF
-            ("file=%s,if=ide,index=%d,media=disk,format=%s,cache=writeback",
-             target_path, unit, format);
+            ("file=%s,if=ide,index=%d,media=disk,format=%s,readonly=%s,cache=writeback",
+             target_path, unit, format, disk->readwrite ? "off" : "on");
         break;
     case LIBXL__COLO_PRIMARY:
         /*
@@ -1898,11 +1899,6 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                         disk, disk), NULL);
                     continue;
                 } else if (disk < 4) {
-                    if (!disks[i].readwrite) {
-                        LOGD(ERROR, guest_domid,
-                             "qemu-xen doesn't support read-only IDE disk drivers");
-                        return ERROR_INVAL;
-                    }
                     if (b_info->stubdomain_version == LIBXL_STUBDOMAIN_VERSION_LINUX) {
                         target_path = (char *[]) {"/dev/xvda",
                                                   "/dev/xvdb",
