@@ -141,7 +141,8 @@ static multiboot_info_t *mbi_reloc(u32 mbi_in)
                        MBI_CMDLINE |
                        MBI_MODULES |
                        MBI_MEMMAP |
-                       MBI_LOADERNAME);
+                       MBI_LOADERNAME |
+                       MBI_FRAMEBUFFER_INFO);
 
     return mbi_out;
 }

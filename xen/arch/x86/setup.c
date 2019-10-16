@@ -95,6 +95,9 @@ unsigned long __initdata highmem_start;
 size_param("highmem-start", highmem_start);
 #endif
 
+static bool_t __initdata mbi_video;
+boolean_param("mbi-video", mbi_video);
+
 cpumask_t __read_mostly cpu_present_map;
 
 unsigned long __read_mostly xen_phys_start;
@@ -507,7 +510,7 @@ struct boot_video_info {
 extern struct boot_video_info boot_vid_info;
 #endif
 
-static void __init parse_video_info(void)
+static void __init parse_video_info(multiboot_info_t *mbi)
 {
 #ifdef CONFIG_VIDEO
     struct boot_video_info *bvi = &bootsym(boot_vid_info);
@@ -515,6 +518,30 @@ static void __init parse_video_info(void)
     /* vga_console_info is filled directly on EFI platform. */
     if ( efi_enabled(EFI_BOOT) )
         return;
+
+    if ( mbi_video &&
+        (mbi->flags & MBI_FRAMEBUFFER_INFO) &&
+        (mbi->framebuffer_type==MULTIBOOT_FRAMEBUFFER_TYPE_RGB)) {
+       bvi->orig_video_isVGA = 0x23;
+
+       bvi->lfb_width          = mbi->framebuffer_width;
+       bvi->lfb_height         = mbi->framebuffer_height;
+       bvi->lfb_linelength     = mbi->framebuffer_pitch;
+       bvi->lfb_depth          = mbi->framebuffer_bpp;
+       bvi->lfb_base           = mbi->framebuffer_addr;
+       bvi->lfb_size           = mbi->framebuffer_height*mbi->framebuffer_pitch;
+
+       bvi->red_pos            = mbi->framebuffer_red_field_position;
+       bvi->red_size           = mbi->framebuffer_red_mask_size;
+       bvi->green_pos          = mbi->framebuffer_green_field_position;
+       bvi->green_size         = mbi->framebuffer_green_mask_size;
+       bvi->blue_pos           = mbi->framebuffer_blue_field_position;
+       bvi->blue_size          = mbi->framebuffer_blue_mask_size;
+       bvi->rsvd_pos           = 0;
+       bvi->rsvd_size          = 0;
+       bvi->capabilities       = 0;
+       bvi->vesa_attrib        = 0;
+    }
 
     if ( (bvi->orig_video_isVGA == 1) && (bvi->orig_video_mode == 3) )
     {
@@ -760,7 +787,7 @@ void __init noreturn __start_xen(unsigned long mbi_p)
 
     probe_hypervisor();
 
-    parse_video_info();
+    parse_video_info(mbi);
 
     rdmsrl(MSR_EFER, this_cpu(efer));
     asm volatile ( "mov %%cr4,%0" : "=r" (get_cpu_info()->cr4) );
