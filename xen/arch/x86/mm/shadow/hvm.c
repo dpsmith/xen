@@ -182,6 +182,26 @@ hvm_emulate_insn_fetch(enum x86_segment seg,
     return X86EMUL_OKAY;
 }
 
+/*
+ * Routine to make hvm_emulate_write appropriate to use for copying the
+ * results of instruction emulation back to guest memory - these
+ * typically require 64-bit, 32-bit and 16-bit writes to be atomic
+ * whereas memcpy is only atomic for 64-bit writes. This is still
+ * not 100% correct since copies larger than 64-bits will not be
+ * atomic for the last 2-6 bytes but should be good enough for
+ * instruction emulation
+ */
+static inline void __sh_atomic_write(
+    void *to, const void *from, size_t count)
+{
+    if (count == sizeof(uint32_t))
+        *(uint32_t *)to = *(uint32_t *)from;
+    else if (count == sizeof(uint16_t))
+        *(uint16_t *)to = *(uint16_t *)from;
+    else
+        memcpy(to, from, count);
+}
+
 static int
 hvm_emulate_write(enum x86_segment seg,
                   unsigned long offset,
@@ -214,7 +234,7 @@ hvm_emulate_write(enum x86_segment seg,
         return ~PTR_ERR(ptr);
 
     paging_lock(v->domain);
-    memcpy(ptr, p_data, bytes);
+    __sh_atomic_write(ptr, p_data, bytes);
 
     if ( tb_init_done )
         v->arch.paging.mode->shadow.trace_emul_write_val(ptr, addr,

@@ -3165,6 +3165,37 @@ enum hvm_translation_result hvm_translate_get_page(
     return HVMTRANS_okay;
 }
 
+/*
+ * Routines to make __hvm_copy appropriate to use for copying the
+ * results of instruction emulation back to guest memory - these
+ * typically require 64-bit, 32-bit and 16-bit writes to be atomic
+ * whereas memcpy is only atomic for 64-bit writes. This is still
+ * not 100% correct since copies larger than 64-bits will not be
+ * atomic for the last 2-6 bytes but should be good enough for
+ * instruction emulation
+ */
+static inline void __hvm_atomic_copy(
+    void *to, const void *from, size_t count)
+{
+    if (count == sizeof(uint32_t))
+        *(uint32_t *)to = *(uint32_t *)from;
+    else if (count == sizeof(uint16_t))
+        *(uint16_t *)to = *(uint16_t *)from;
+    else
+        memcpy(to, from, count);
+}
+
+static inline void __hvm_atomic_zero(
+    void *to, size_t count)
+{
+    if (count == sizeof(int32_t))
+        *(int32_t *)to = (int32_t)0;
+    else if (count == sizeof(int16_t))
+        *(int16_t *)to = (int16_t)0;
+    else
+        memset(to, 0, count);
+}
+
 #define HVMCOPY_from_guest (0u<<0)
 #define HVMCOPY_to_guest   (1u<<0)
 #define HVMCOPY_phys       (0u<<2)
@@ -3231,9 +3262,9 @@ static enum hvm_translation_result __hvm_copy(
             else
             {
                 if ( buf )
-                    memcpy(p, buf, count);
+                    __hvm_atomic_copy(p, buf, count);
                 else
-                    memset(p, 0, count);
+                    __hvm_atomic_zero(p, count);
                 paging_mark_pfn_dirty(v->domain, _pfn(gfn_x(gfn)));
             }
         }
