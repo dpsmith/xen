@@ -113,6 +113,9 @@ void save_domain_core_writeconfig(int fd, const char *source,
  * a process exit status and not a function return value.
  */
 
+#ifdef HAVE_DBUS
+int main_dbus(int argc, char **argv);
+#endif
 int main_vcpulist(int argc, char **argv);
 int main_info(int argc, char **argv);
 int main_sharing(int argc, char **argv);

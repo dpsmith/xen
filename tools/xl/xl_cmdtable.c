@@ -19,6 +19,13 @@
 #include "xl.h"
 
 struct cmd_spec cmd_table[] = {
+#ifdef HAVE_DBUS
+    { "dbus",
+      &main_dbus, 0, 0,
+      "Start dbus service",
+      "",
+    },
+#endif
     { "create",
       &main_create, 1, 1,
       "Create a domain from config file <filename>",
