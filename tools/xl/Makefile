@@ -9,13 +9,17 @@ CFLAGS += -Werror -Wno-format-zero-length -Wmissing-declarations \
 	-Wno-declaration-after-statement -Wformat-nonliteral
 CFLAGS += -I. -fPIC
 
-CFLAGS += $(PTHREAD_CFLAGS)
-LDFLAGS += $(PTHREAD_LDFLAGS)
+CFLAGS += $(PTHREAD_CFLAGS) $(GLIB_CFLAGS) $(GIO_CFLAGS)
+LDFLAGS += $(PTHREAD_LDFLAGS) $(GLIB_LDFLAGS) $(GIO_LDFLAGS)
+
+CFLAGS += $(GIO_CFLAGS)
+LDFLAGS += $(GIO_LIBS)
 
 CFLAGS_XL += $(CFLAGS_libxenlight)
 CFLAGS_XL += -Wshadow
 
 XL_OBJS-$(CONFIG_X86) = xl_psr.o
+XL_OBJS-$(CONFIG_DBUS) += xl_dbus.o
 XL_OBJS = xl.o xl_cmdtable.o xl_sxp.o xl_utils.o $(XL_OBJS-y)
 XL_OBJS += xl_parse.o xl_cpupool.o xl_flask.o
 XL_OBJS += xl_vtpm.o xl_block.o xl_nic.o xl_usb.o

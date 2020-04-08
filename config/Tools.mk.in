@@ -37,6 +37,9 @@ LIBNL3_LIBS         := @LIBNL3_LIBS@
 LIBNL3_CFLAGS       := @LIBNL3_CFLAGS@
 XEN_TOOLS_RPATH     := @rpath@
 
+GIO_LIBS            := @GIO_LIBS@
+GIO_CFLAGS          := @GIO_CFLAGS@
+
 # Download GIT repositories via HTTP or GIT's own protocol?
 # GIT's protocol is faster and more robust, when it works at all (firewalls
 # may block it). We make it the default, but if your GIT repository downloads
@@ -55,6 +58,7 @@ CONFIG_QEMU_TRAD    := @qemu_traditional@
 CONFIG_QEMU_XEN     := @qemu_xen@
 CONFIG_QEMUU_EXTRA_ARGS:= @EXTRA_QEMUU_CONFIGURE_ARGS@
 CONFIG_LIBNL        := @libnl@
+CONFIG_DBUS         := @dbus@
 
 CONFIG_SYSTEMD      := @systemd@
 SYSTEMD_CFLAGS      := @SYSTEMD_CFLAGS@

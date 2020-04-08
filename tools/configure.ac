@@ -488,4 +488,17 @@ AC_ARG_ENABLE([pvshim],
 ])
 AC_SUBST(pvshim)
 
+AC_ARG_ENABLE([dbus],
+    AS_HELP_STRING([--enable-dbus],
+                   [Explicitly enable dbus support]),[
+    PKG_CHECK_MODULES(GIO, [gio-unix-2.0 >= 2.12])
+    AC_DEFINE([HAVE_DBUS], [1], [DBUS enabled])
+    dbus=y],[
+    dbus=n
+])
+
+AC_SUBST(GIO_LIBS)
+AC_SUBST(GIO_CFLAGS)
+AC_SUBST(dbus)
+
 AC_OUTPUT()
