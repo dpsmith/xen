@@ -1,0 +1,898 @@
+<!DOCTYPE node PUBLIC
+"-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/" xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
+
+<!--
+  Copyright (C) 2020 Daniel P. Smith <dpsmith@apertussolutions.com>
+-->
+
+
+  <!-- ********************************************************************** -->
+
+  <!--
+      org.xen.xl.Argv:
+      @short_description: Simple interface to xl command suite
+      This is a simple interface whereby you pass the commandline parameters
+      for each command as the argv parameter. A Unix FD will be returned which
+      is effectively the STDOUT FD for xl. Reading from the FD will require
+      parsing similar to reading the STDOUT of a fork/exec'ed instance of xl.
+ -->
+
+  <interface name="org.xen.xl.Argv">
+    <!--
+      Create a domain from config file <filename>
+      <ConfigFile> [options] [vars]
+      -h                      Print this help.\n
+      -p                      Leave the domain paused after it is created.\n
+      -c                      Connect to the console after the domain is created.\n
+      -f FILE, \-\-defconfig=FILE\n                     Use the given configuration file.\n
+      -q, \-\-quiet             Quiet.\n
+      -n, \-\-dryrun            Dry run - prints the resulting configuration\n
+                               (deprecated in favour of global -N option).\n
+      -d                      Enable debug messages.\n
+      -F                      Run in foreground until death of the domain.\n
+      -e                      Do not wait in the background for the death of the domain.\n
+      -V, \-\-vncviewer         Connect to the VNC display after the domain is created.\n
+      -A, \-\-vncviewer-autopass\n
+                              Pass VNC password to viewer via stdin.\n
+      \-\-ignore-global-affinity-masks Ignore global masks in xl.conf.
+    -->
+    <method name=create>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Update a running domain's saved configuration, used when rebuilding 
+      the domain after reboot.\n
+      WARNING: xl now has better capability to manage domain configuration, 
+      avoid using this command when possible",
+      <Domain> <ConfigFile> [options] [vars]",
+      -h                      Print this help.\n
+      -f FILE, \-\-defconfig=FILE\n                     Use the given configuration file.\n
+      -d                      Enable debug messages.\n
+    -->
+    <method name=config-update>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List information about all/some domains
+      [options] [Domain]\n
+      -l, \-\-long              Output all VM details\n
+      -v, \-\-verbose           Prints out UUIDs and security context\n
+      -Z, \-\-context           Prints out security context\n
+      -c, \-\-cpupool           Prints the cpupool the domain is in\n
+      -n, \-\-numa              Prints out NUMA node affinity
+    -->
+    <method name=list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Terminate a domain immediately
+      [options] <Domain>\n
+      -f                      Permit destroying domain 0, which will only succeed\n
+                              when run from disaggregated toolstack domain with a\n
+                              hardware domain distinct from domain 0.
+    -->
+    <method name=destroy>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Issue a shutdown signal to a domain
+      [options] <-a|Domain>
+      -a, \-\-all               Shutdown all guest domains.\n
+      -h                      Print this help.\n
+      -F                      Fallback to ACPI power event for HVM guests with\n
+                              no PV drivers.\n
+      -w, \-\-wait              Wait for guest(s) to shutdown.\n
+    -->
+    <method name=shutdown>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Issue a reboot signal to a domain
+      [options] <-a|Domain>
+      -a, \-\-all               Shutdown all guest domains.\n
+      -h                      Print this help.\n
+      -F                      Fallback to ACPI reset event for HVM guests with\n
+                              no PV drivers.\n
+      -w, \-\-wait              Wait for guest(s) to reboot.\n
+    -->
+    <method name=reboot>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Insert a new pass-through pci device
+      <Domain> <BDF> [Virtual Slot]
+    -->
+    <method name=pci-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Remove a domain's pass-through pci device
+      <Domain> <BDF>
+    -->
+    <method name=pci-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List pass-through pci devices for a domain
+      <Domain>
+    -->
+    <method name=pci-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Make a device assignable for pci-passthru
+      <BDF>
+      -h                      Print this help.\n
+    -->
+    <method name=pci-assignable-add>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Remove a device from being assignable
+      [options] <BDF>
+      -h                      Print this help.\n
+      -r                      Attempt to re-assign the device to the\n
+                              original driver
+    -->
+    <method name=pci-assignable-remove>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List all the assignable pci devices
+    -->
+    <method name=pci-assignable-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Pause execution of a domain
+      <Domain>
+    -->
+    <method name=pause>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Unpause a paused domain
+      <Domain>
+    -->
+    <method name=unpause>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Attach to domain's console
+      [options] <Domain>\n
+      -t <type>       console type, pv , serial or vuart\n
+      -n <number>     console number
+    -->
+    <method name=console>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Attach to domain's VNC server.
+      [options] <Domain>\n
+      \-\-autopass               Pass VNC password to viewer via stdin and\n
+                               -autopass\n
+      \-\-vncviewer-autopass     (consistency alias for \-\-autopass)
+    -->
+    <method name=vncviewer>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  #ifndef LIBXL_HAVE_NO_SUSPEND_RESUME
+    <!--
+      Save a domain state to restore later
+      [options] <Domain> <CheckpointFile> [<ConfigFile>]
+      -h  Print this help.\n
+      -c  Leave domain running after creating the snapshot.\n
+      -p  Leave domain paused after creating the snapshot.\n
+      -D  Store the domain id in the configration.
+    -->
+    <method name=save>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Migrate a domain to another host
+      [options] <Domain> <host>
+      -h              Print this help.\n
+      -C <config>     Send <config> instead of config file from creation.\n
+      -s <sshcommand> Use <sshcommand> instead of ssh.  String will be passed\n
+                      to sh. If empty, run <host> instead of ssh <host> xl\n
+                      migrate-receive [-d -e]\n
+      -e              Do not wait in the background (on <host>) for the death\n
+                      of the domain.\n
+      \-\-debug         Print huge (!) amount of debug during the migration process.\n
+      -p              Do not unpause domain after migrating it.\n
+      -D              Preserve the domain id
+    -->
+    <method name=migrate>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Restore a domain from a saved state
+      [options] [<ConfigFile>] <CheckpointFile>
+      -h                       Print this help.\n
+      -p                       Do not unpause domain after restoring it.\n
+      -e                       Do not wait in the background for the death of the domain.\n
+      -d                       Enable debug messages.\n
+      -V, \-\-vncviewer          Connect to the VNC display after the domain is created.\n
+      -A, \-\-vncviewer-autopass Pass VNC password to viewer via stdin.
+    -->
+    <method name=restore>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Restore a domain from a saved state
+      - for internal use only
+    -->
+    <method name=migrate-receive>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  #endif
+    <!--
+      Core dump a domain
+      <Domain> <filename>
+    -->
+    <method name=dump-core>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Insert a cdrom into a guest's cd drive
+      <Domain> <VirtualDevice> <path>
+    -->
+    <method name=cd-insert>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Eject a cdrom from a guest's cd drive
+      <Domain> <VirtualDevice>
+    -->
+    <method name=cd-eject>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set the maximum amount reservation for a domain
+      <Domain> <MemMB['b'[bytes]|'k'[KB]|'m'[MB]|'g'[GB]|'t'[TB]]>
+    -->
+    <method name=mem-max>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set the current memory usage for a domain
+      <Domain> <MemMB['b'[bytes]|'k'[KB]|'m'[MB]|'g'[GB]|'t'[TB]]>
+    -->
+    <method name=mem-set>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Indicate an ACPI button press to the domain
+      <Domain> <Button>
+      <Button> may be 'power' or 'sleep'.
+    -->
+    <method name=button-press>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List the VCPUs for all/some domains
+      [Domain, ...]
+    -->
+    <method name=vcpu-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set which CPUs a VCPU can use
+      [option] <Domain> <VCPU|all> <Hard affinity|-|all> <Soft affinity|-|all>
+      -f, \-\-force        undo an override pinning done by the kernel\n
+      \-\-ignore-global-affinity-masks Ignore global masks in xl.conf
+    -->
+    <method name=vcpu-pin>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set the number of active VCPUs allowed for the domain
+      [option] <Domain> <vCPUs>
+      -i, \-\-ignore-host  Don't limit the vCPU based on the host CPU count
+    -->
+    <method name=vcpu-set>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List guest domains, excluding dom0, stubdoms, etc.
+    -->
+    <method name=vm-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Get information about Xen host
+      -n, \-\-numa         List host NUMA topology information
+    -->
+    <method name=info>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Get information about page sharing
+      [Domain]
+    -->
+    <method name=sharing>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Get/set credit scheduler parameters
+      [-d <Domain> [-w[=WEIGHT]|-c[=CAP]]] [-s [-t TSLICE] [-r RATELIMIT]] [-p CPUPOOL]
+      -d DOMAIN, \-\-domain=DOMAIN        Domain to modify\n
+      -w WEIGHT, \-\-weight=WEIGHT        Weight (int)\n
+      -c CAP, \-\-cap=CAP                 Cap (int)\n
+      -s         \-\-schedparam           Query / modify scheduler parameters\n
+      -t TSLICE, \-\-tslice_ms=TSLICE     Set the timeslice, in milliseconds\n
+      -r RLIMIT, \-\-ratelimit_us=RLIMIT  Set the scheduling rate limit, in microseconds\n
+      -m DLY, \-\-migration_delay_us=DLY  Set the migration delay, in microseconds\n
+      -p CPUPOOL, \-\-cpupool=CPUPOOL     Restrict output to CPUPOOL
+    -->
+    <method name=sched-credit>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Get/set credit2 scheduler parameters
+      [-d <Domain> [-w[=WEIGHT]]] [-p CPUPOOL]
+      -d DOMAIN, \-\-domain=DOMAIN     Domain to modify\n
+      -w WEIGHT, \-\-weight=WEIGHT     Weight (int)\n
+      -c CAP,    \-\-cap=CAP           Cap (int)\n
+      -s         \-\-schedparam        Query / modify scheduler parameters\n
+      -r RLIMIT, \-\-ratelimit_us=RLIMIT Set the scheduling rate limit, in microseconds\n
+      -p CPUPOOL, \-\-cpupool=CPUPOOL  Restrict output to CPUPOOL
+    -->
+    <method name=sched-credit2>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Get/set rtds scheduler parameters
+      [-d <Domain> [-v[=VCPUID/all]] [-p[=PERIOD]] [-b[=BUDGET]] [-e[=Extratime]]]
+      -d DOMAIN, \-\-domain=DOMAIN     Domain to modify\n
+      -v VCPUID/all, \-\-vcpuid=VCPUID/all    VCPU to modify or output;\n
+                     Using '-v all' to modify/output all vcpus\n
+      -p PERIOD, \-\-period=PERIOD     Period (us)\n
+      -b BUDGET, \-\-budget=BUDGET     Budget (us)\n
+      -e Extratime, \-\-extratime=Extratime Extratime (1=yes, 0=no)\n
+    -->
+    <method name=sched-rtds>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Convert a domain name to domain id
+      <DomainName>
+    -->
+    <method name=domid>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Convert a domain id to domain name
+      <DomainId>
+    -->
+    <method name=domname>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Rename a domain
+      <Domain> <NewDomainName>
+    -->
+    <method name=rename>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Send a trigger to a domain
+      <Domain> <nmi|reset|init|power|sleep|s3resume> [<VCPU>]
+    -->
+    <method name=trigger>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Send a sysrq to a domain
+      <Domain> <letter>
+    -->
+    <method name=sysrq>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Send debug keys to Xen
+      <Keys>
+    -->
+    <method name=debug-keys>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set hypervisor parameters
+      <Params>
+    -->
+    <method name=set-parameters>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Read and/or clear dmesg buffer
+      [-c]
+        -c                        Clear dmesg buffer as well as printing it
+    -->
+    <method name=dmesg>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Monitor a host and the domains in real time
+    -->
+    <method name=top>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new virtual network device
+      <Domain> [type=<type>] [mac=<mac>] [bridge=<bridge>] 
+      [ip=<ip>] [script=<script>] [backend=<BackDomain>] [vifname=<name>] 
+      [rate=<rate>] [model=<model>] [accel=<accel>]
+    -->
+    <method name=network-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual network interfaces for a domain
+      <Domain(s)>
+    -->
+    <method name=network-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Destroy a domain's virtual network device
+      <Domain> <DevId|mac>
+    -->
+    <method name=network-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual channel devices for a domain
+      <Domain(s)>
+    -->
+    <method name=channel-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new virtual block device
+      <Domain> <disk-spec-component(s)>...
+    -->
+    <method name=block-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual block devices for a domain
+      <Domain(s)>
+    -->
+    <method name=block-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Destroy a domain's virtual block device
+      <Domain> <DevId>
+    -->
+    <method name=block-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new virtual TPM device
+      <Domain> [uuid=<uuid>] [backend=<BackDomain>]
+    -->
+    <method name=vtpm-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual TPM devices for a domain
+      <Domain(s)>
+    -->
+    <method name=vtpm-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Destroy a domain's virtual TPM device
+      <Domain> <DevId|uuid>
+    -->
+    <method name=vtpm-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new virtual keyboard device
+      <Domain> <vkb-spec-component(s)>...
+    -->
+    <method name=vkb-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual keyboard devices for a domain
+      <Domain(s)>
+    -->
+    <method name=vkb-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Destroy a domain's virtual keyboard device
+      <Domain> <DevId>
+    -->
+    <method name=vkb-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new virtual display device
+      <Domain> [backend=<BackDomain>] [be-alloc=<BackAlloc>] [connectors='<Connectors>']
+          BackAlloc  - set to 1 to if backend allocates display buffers\n
+          Connectors - list of connector's description in ID:WxH format,\n
+                       where: ID - unique connector ID, W - connector width,\n
+                       H - connector height: connectors='id0:800x600;id1:1024x768'\n
+    -->
+    <method name=vdispl-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual display devices for a domain
+      <Domain(s)>
+    -->
+    <method name=vdispl-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Destroy a domain's virtual display device
+      <Domain> <DevId>
+    -->
+    <method name=vdispl-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new virtual sound device
+      <Domain> <vsnd-spec-component(s)>...
+    -->
+    <method name=vsnd-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List virtual display devices for a domain
+      <Domain(s)>
+    -->
+    <method name=vsnd-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Destroy a domain's virtual sound device
+      <Domain> <DevId>
+    -->
+    <method name=vsnd-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Print uptime for all/some domains
+      [-s] [Domain]
+    -->
+    <method name=uptime>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List outstanding claim information about all domains
+    -->
+    <method name=claims>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Create a new CPU pool
+      [options] [<ConfigFile>] [Variable=value ...]
+      -h, \-\-help                   Print this help.\n
+      -f FILE, \-\-defconfig=FILE    Use the given configuration file.\n
+      -n, \-\-dryrun                 Dry run - prints the resulting configuration.\n
+                                    (deprecated in favour of global -N option).\n
+      \nSee the xlcpupool.cfg(5) manpage for more information.
+    -->
+    <method name=cpupool-create>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List CPU pools on host
+      [-c|\-\-cpus] [<CPU Pool>]
+      -c, \-\-cpus                     Output list of CPUs used by a pool
+    -->
+
+    <method name=cpupool-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Deactivates a CPU pool
+      <CPU Pool>
+    -->
+    <method name=cpupool-destroy>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Renames a CPU pool
+      <CPU Pool> <new name>
+    -->
+    <method name=cpupool-rename>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Adds a CPU to a CPU pool
+      <CPU Pool> <CPU nr>|node:<node nr>
+    -->
+    <method name=cpupool-cpu-add>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Removes a CPU from a CPU pool
+      <CPU Pool> <CPU nr>|node:<node nr>
+    -->
+    <method name=cpupool-cpu-remove>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Moves a domain into a CPU pool
+      <Domain> <CPU Pool>
+    -->
+    <method name=cpupool-migrate>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Splits up the machine into one CPU pool per NUMA node
+    -->
+    <method name=cpupool-numa-split>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Returns the current enforcing mode of the Flask Xen security module
+    -->
+    <method name=getenforce>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Sets the current enforcing mode of the Flask Xen security module
+      <1|0|Enforcing|Permissive>
+    -->
+    <method name=setenforce>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Loads a new policy into the Flask Xen security module
+      <policy file>
+    -->
+    <method name=loadpolicy>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  #ifndef LIBXL_HAVE_NO_SUSPEND_RESUME
+    <!--
+      Enable Remus HA for domain
+      [options] <Domain> [<host>]
+      -i MS                   Checkpoint domain memory every MS milliseconds (def. 200ms).\n
+      -u                      Disable memory checkpoint compression.\n
+      -s <sshcommand>         Use <sshcommand> instead of ssh.  String will be passed\n
+                              to sh. If empty, run <host> instead of \n
+                              ssh <host> xl migrate-receive -r [-e]\n
+      -e                      Do not wait in the background (on <host>) for the death\n
+                              of the domain.\n
+      -N <netbufscript>       Use netbufscript to setup network buffering instead of the\n
+                              default script (/etc/xen/scripts/remus-netbuf-setup).\n
+      -F                      Enable unsafe configurations [-b|-n|-d flags]. Use this option\n
+                              with caution as failover may not work as intended.\n
+      -b                      Replicate memory checkpoints to /dev/null (blackhole).\n
+                              Works only in unsafe mode.\n
+      -n                      Disable network output buffering. Works only in unsafe mode.\n
+      -d                      Disable disk replication. Works only in unsafe mode.\n
+      -c                      Enable COLO HA. It is conflict with -i and -b, and memory\n
+                              checkpoint must be disabled.\n
+      -p                      Use COLO userspace proxy.
+    -->
+    <method name=remus>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  #endif
+    <!--
+      Daemon that listens for devices and launches backends
+      [options]
+      -F                      Run in the foreground.\n
+      -p, \-\-pidfile [FILE]    Write PID to pidfile when daemonizing.
+    -->
+    <method name=devd>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  #if defined(__i386__) || defined(__x86_64__)
+    <!--
+      Show hardware information for Platform Shared Resource
+      [options]
+      -m, \-\-cmt       Show Cache Monitoring Technology (CMT) hardware info\n
+      -a, \-\-cat       Show Cache Allocation Technology (CAT) hardware info\n
+      -b, \-\-mba       Show Memory Bandwidth Allocation (MBA) hardware info\n
+    -->
+    <method name=psr-hwinfo>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Attach Cache Monitoring Technology service to a domain
+      <Domain>
+    -->
+    <method name=psr-cmt-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Detach Cache Monitoring Technology service from a domain
+      <Domain>
+    -->
+    <method name=psr-cmt-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Show Cache Monitoring Technology information
+      <PSR-CMT-Type> <Domain>
+      Available monitor types:\n
+      \"cache-occupancy\":         Show L3 cache occupancy(KB)\n
+      \"total-mem-bandwidth\":     Show total memory bandwidth(KB/s)\n
+      \"local-mem-bandwidth\":     Show local memory bandwidth(KB/s)\n
+    -->
+    <method name=psr-cmt-show>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set cache capacity bitmasks(CBM) for a domain
+      [options] <Domain> <CBM>
+      -s <socket>       Specify the socket to process, otherwise all sockets are processed\n
+      -l <level>        Specify the cache level to process, otherwise L3 cache is processed\n
+      -c                Set code CBM if CDP is supported\n
+      -d                Set data CBM if CDP is supported\n
+    -->
+    <method name=psr-cat-set>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Show Cache Allocation Technology information
+      [options] <Domain>
+      -l <level>        Specify the cache level to process, otherwise L3 cache is processed\n
+    -->
+    <method name=psr-cat-show>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Set throttling value (THRTL) for a domain
+      [options] <Domain> <THRTL>
+      -s <socket>       Specify the socket to process, otherwise all sockets are processed\n
+    -->
+    <method name=psr-mba-set>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Show Memory Bandwidth Allocation information
+      <Domain>
+    -->
+    <method name=psr-mba-show>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  #endif
+    <!--
+      Create a virtual USB controller for a domain
+      <Domain> [type=pv] [version=<version>] [ports=<number>]
+    -->
+    <method name=usbctrl-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Remove the virtual USB controller specified by <DevId> for a domain
+      <Domain> <DevId>
+    -->
+    <method name=usbctrl-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Attach a USB device to a domain
+      <Domain> hostbus=<busnum> hostaddr=<devnum> [controller=<DevId> [port=<port>]]
+    -->
+    <method name=usbdev-attach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Detach a USB device from a domain
+      <Domain> <controller> <port>
+    -->
+    <method name=usbdev-detach>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      List information about all USB controllers and devices for a domain
+      <Domain>
+    -->
+    <method name=usb-list>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+    <!--
+      Issue a qemu monitor command to the device model of a domain
+      <Domain> <Command>
+    -->
+    <method name=qemu-monitor-command>
+      <arg type="s" name="argv" direction="in"/>
+      <arg type="h" name="stdout" direction="out"/>
+    </method>
+  </interface>
+</node>
